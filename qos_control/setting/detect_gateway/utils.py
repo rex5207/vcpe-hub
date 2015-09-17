@@ -5,7 +5,7 @@ from ryu.lib.packet import udp, tcp
 from ryu.ofproto import inet
 
 from setting.db.data_collection import switch_inner_port
-from setting.var import constant
+from setting.variables import constant
 
 
 def dectect_by_dhcp(pkt, datapath, in_port):

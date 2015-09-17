@@ -9,7 +9,7 @@ from ryu.lib import hub
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 
-from setting.var import constant
+from setting.variables import constant
 from setting.db import data_collection
 from setting.db import collection
 
