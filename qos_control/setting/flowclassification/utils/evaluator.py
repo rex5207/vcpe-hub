@@ -1,6 +1,6 @@
 """Method for evaluation."""
 from setting.flowclassification.record import statistic
-from setting.flowclassification.var import constant
+from setting.variables.var import constant
 
 
 def app_evaluation(flow_list):
