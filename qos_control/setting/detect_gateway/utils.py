@@ -36,9 +36,9 @@ def detect_by_flow(pkt, member_list):
 
     member_s = member_list.get(pkt_eth.src)
     member_t = member_list.get(pkt_eth.dst)
-    print '[INFO] pkt >> \n'
-    print '  >>', pkt_eth.src, pkt_eth.dst
-    print '  >>', pkt_ipv4.src, pkt_ipv4.dst
+    # print '[INFO] pkt >> \n'
+    # print '  >>', pkt_eth.src, pkt_eth.dst
+    # print '  >>', pkt_ipv4.src, pkt_ipv4.dst
     if member_s is not None and member_t is not None:
         if member_s.ip != pkt_ipv4.src:
             return_value = [member_s.datapath.id, pkt_eth.src]
@@ -71,9 +71,9 @@ def detect_gateway_main(pkt, datapath, in_port, member_list):
                 if member_list.get(ans1[1]) is not None:
                     constant.Gateway_IP = str(member_list[ans1[1]].ip)
 
-        print '[INFO] Gateway detection >>\n'
-        print '  >> ', constant.Detect_switch_DPID_check, '\n'
-        print '  >> ', constant.Detect_switch_DPID, '\n'
-        print '  >> ', constant.Gateway_Mac
-        print '  >> ', constant.Gateway_IP
-        print '  >> ', constant.Controller_IP
+        # print '[INFO] Gateway detection >>\n'
+        # print '  >> ', constant.Detect_switch_DPID_check, '\n'
+        # print '  >> ', constant.Detect_switch_DPID, '\n'
+        # print '  >> ', constant.Gateway_Mac
+        # print '  >> ', constant.Gateway_IP
+        # print '  >> ', constant.Controller_IP
