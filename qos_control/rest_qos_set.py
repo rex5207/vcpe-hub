@@ -27,6 +27,7 @@ class QosSetup(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         wsgi.register(QosSetupRest,
                       {set_qos_info_instance_name: self})
+        data_collection.meter_list.update({"drop": "-1"})
 
     def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
         """Set rate control for applications."""
@@ -35,6 +36,17 @@ class QosSetup(app_manager.RyuApp):
             appset.update({appname: {'state': state, 'meter_id': int(meter_id)}})
         else:
             setup.ratelimite_setup_for_specialcase.update({group_id: {appname: {'state': state, 'meter_id': int(meter_id)}}})
+        ev = Qos_UpdateEvent('Update qos for flow')
+        self.send_event_to_observers(ev)
+
+    def set_ratelimite_for_mac(self, mac, meter_id, group_id, state):
+        """Set rate control for applications."""
+        if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
+            memberset = setup.ratelimite_setup_for_specialcase_member.get(group_id)
+            memberset.update({mac: {'state': state, 'meter_id': int(meter_id)}})
+        else:
+            setup.ratelimite_setup_for_specialcase_member.update({group_id: {mac: {'state': state, 'meter_id': int(meter_id)}}})
+
         ev = Qos_UpdateEvent('Update qos for flow')
         self.send_event_to_observers(ev)
 
@@ -101,6 +113,17 @@ class QosSetupRest(ControllerBase):
         state = str(json_link.get('state'))
 
         self.get_qos_info.set_ratelimite_for_app(app, meter_id, group_id, state)
+
+    @route('rate_for_member', urls.url_flow_member, methods=['PUT'])
+    def set_flow_for_ratelimite_for_member(self, req, **kwargs):
+        mac = str(kwargs['mac'])
+        content = req.body
+        json_link = json.loads(content)
+        meter_id = str(json_link.get('meter_id'))
+        group_id = str(json_link.get('group_id'))
+        state = str(json_link.get('state'))
+
+        self.get_qos_info.set_ratelimite_for_mac(mac, meter_id, group_id, state)
 
     @route('meter_data', urls.url_meter_set, methods=['PUT'])
     def set_meter_data_(self, req, **kwargs):

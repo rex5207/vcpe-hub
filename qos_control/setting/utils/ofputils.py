@@ -55,8 +55,12 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
         # inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
         #         parser.OFPInstructionWriteMetadata(int(meter), 4294967295),
         #         parser.OFPInstructionGotoTable(1)]
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-                parser.OFPInstructionMeter(meter)]
+        if meter == -1:
+            actions = []
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        else:
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
+                    parser.OFPInstructionMeter(meter)]
     else:
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
@@ -94,7 +98,7 @@ def add_flow_meta(datapath, priority, meta, meter_id, buffer_id=None):
         datapath.send_msg(mod)
 
 def del_flow_meta(datapath, priority, meta, meter_id, buffer_id=None):
-        """Add meta data in table 1."""
+        """Del meta data in table 1."""
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         match = parser.OFPMatch(metadata = meta)
