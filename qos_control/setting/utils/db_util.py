@@ -25,7 +25,7 @@ def update_app_for_flows(flow_list, dp_ip):
                 else:
                     m.update(flow_info.dst_ip + flow_info.src_ip
                              + str(flow_info.dst_port) + str(flow_info.src_port) + str(flow_info.ip_proto))
-                    url = 'http://140.114.71.175:2000/api/get/' + m.hexdigest()
+                    url = 'http://140.114.71.176:2000/api/get/' + m.hexdigest()
                     response = requests.get(url)
                     if response.status_code == 200:
                         json_data = response.json()
