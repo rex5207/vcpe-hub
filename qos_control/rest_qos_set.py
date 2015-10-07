@@ -137,3 +137,21 @@ class QosSetupRest(ControllerBase):
         self.get_qos_info.set_meter_to_switches(meterid, bandwidth, command)
         return Response(content_type='application/json',
                             body=str('Success'))
+
+    @route('member_list_for_app', urls.url_member_list_for_app, methods=['GET'])
+    def get_member_list_for_app(self, req, **kwargs):
+        app = str(kwargs['app'])
+        members = []
+        for key in statistic.database_member_record.keys():
+            member_data = statistic.database_member_record[key]
+            app_list = member_data.apprate.keys()
+            if app in app_list:
+                m = data_collection.member_list.get(member_data.id)
+                member = {}
+                member.update({'mac': member_data.id})
+                member.update({'ip': m.ip})
+                members.append(member)
+        dic = {}
+        dic.update({app: members})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
