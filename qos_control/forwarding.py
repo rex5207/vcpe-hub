@@ -95,7 +95,7 @@ class forwarding(app_manager.RyuApp):
                     actions2 = [parser.OFPActionOutput(out_port2)]
                     # print 'switch!!', next_n
                     out_datapath = get_switch(self.topology_api_app, dpid=next_n)
-                    print pkt_ethernet.src,pkt_ethernet.dst,out_datapath, out_port, out_port2
+                    # print pkt_ethernet.src,pkt_ethernet.dst,out_datapath, out_port, out_port2
                     if pkt_ipv4.proto == inet.IPPROTO_TCP:
                         pkt_tcp = pkt.get_protocol(tcp.tcp)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
