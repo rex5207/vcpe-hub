@@ -3,7 +3,7 @@
 
 def add_flow(datapath, priority, match, actions, buffer_id=None):
     """Add flows."""
-    print 'add flows'
+    # print 'add flows'
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
 

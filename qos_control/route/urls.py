@@ -10,4 +10,6 @@ url_meter_set = '/api/set_meter_info/{meterid}'
 url_qos_app_list_get = '/api/get_app_list'
 url_qos_meter_list_get = '/api/get_meter_list'
 
+url_member_list_for_app = '/api/get_member_for_app/{app}'
+
 counter = 0

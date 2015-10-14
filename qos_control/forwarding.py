@@ -57,10 +57,12 @@ class forwarding(app_manager.RyuApp):
                 self._broadcast_pkt(msg)
             else:
                 check = 'whole'
-                self._handle_ipv4(datapath, in_port, pkt_eth,
+                self._handle_ipv4(msg, datapath, in_port, pkt_eth,
                                   pkt_ipv4, pkt, pkt_eth.dst, check)
+        else:
+            self._broadcast_pkt(msg)
 
-    def _handle_ipv4(self, datapath, port, pkt_ethernet, pkt_ipv4, pkt,
+    def _handle_ipv4(self, msg, datapath, port, pkt_ethernet, pkt_ipv4, pkt,
                      dst_mac, group_id):
         parser = datapath.ofproto_parser
         group = data_collection.group_list.get(group_id)
@@ -81,8 +83,19 @@ class forwarding(app_manager.RyuApp):
                     else:
                         out_port = net[next_n][ipv4_path[index+1]]['port']
 
+                    if index == 1:
+                        out_port2 = port
+                    else:
+                        # print index, pkt_ethernet.dst, pkt_ethernet.src
+                        # print ipv4_path[index+1], next_n
+                        out_port2 = net[next_n][ipv4_path[index-1]]['port']
+
+
                     actions = [parser.OFPActionOutput(out_port)]
+                    actions2 = [parser.OFPActionOutput(out_port2)]
+                    # print 'switch!!', next_n
                     out_datapath = get_switch(self.topology_api_app, dpid=next_n)
+                    # print pkt_ethernet.src,pkt_ethernet.dst,out_datapath, out_port, out_port2
                     if pkt_ipv4.proto == inet.IPPROTO_TCP:
                         pkt_tcp = pkt.get_protocol(tcp.tcp)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
@@ -93,6 +106,14 @@ class forwarding(app_manager.RyuApp):
                                                 ip_proto=pkt_ipv4.proto,
                                                 tcp_src=pkt_tcp.src_port,
                                                 tcp_dst=pkt_tcp.dst_port)
+                        match2 = parser.OFPMatch(eth_src=pkt_ethernet.dst,
+                                                 eth_dst=pkt_ethernet.src,
+                                                 eth_type=ether.ETH_TYPE_IP,
+                                                 ipv4_src=pkt_ipv4.dst,
+                                                 ipv4_dst=pkt_ipv4.src,
+                                                 ip_proto=pkt_ipv4.proto,
+                                                 tcp_src=pkt_tcp.dst_port,
+                                                 tcp_dst=pkt_tcp.src_port)
                     elif pkt_ipv4.proto == inet.IPPROTO_UDP:
                         pkt_udp = pkt.get_protocol(udp.udp)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
@@ -103,14 +124,39 @@ class forwarding(app_manager.RyuApp):
                                                 ip_proto=pkt_ipv4.proto,
                                                 udp_src=pkt_udp.src_port,
                                                 udp_dst=pkt_udp.dst_port)
+                        match2 = parser.OFPMatch(eth_src=pkt_ethernet.dst,
+                                                 eth_dst=pkt_ethernet.src,
+                                                 eth_type=ether.ETH_TYPE_IP,
+                                                 ipv4_src=pkt_ipv4.dst,
+                                                 ipv4_dst=pkt_ipv4.src,
+                                                 ip_proto=pkt_ipv4.proto,
+                                                 udp_src=pkt_udp.dst_port,
+                                                 udp_dst=pkt_udp.src_port)
                     else:
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
                                                 eth_dst=pkt_ethernet.dst,
                                                 eth_type=ether.ETH_TYPE_IP,
                                                 ipv4_src=pkt_ipv4.src,
                                                 ipv4_dst=pkt_ipv4.dst)
+                        match2 = parser.OFPMatch(eth_src=pkt_ethernet.dst,
+                                                 eth_dst=pkt_ethernet.src,
+                                                 eth_type=ether.ETH_TYPE_IP,
+                                                 ipv4_src=pkt_ipv4.dst,
+                                                 ipv4_dst=pkt_ipv4.src)
 
                     ofputils.add_flow(out_datapath[0].dp, 10, match, actions)
+                    ofputils.add_flow(out_datapath[0].dp, 10, match2, actions2)
+            actions_o = [parser.OFPActionOutput(m_dst.port)]
+            datapath_o = m_dst.datapath
+            out = parser.OFPPacketOut(datapath=datapath_o,
+                                      buffer_id=msg.buffer_id,
+                                      in_port=msg.match['in_port'],
+                                      actions=actions_o,
+                                      data=msg.data)
+            datapath.send_msg(out)
+        else:
+            self._broadcast_pkt(msg)
+
 
     def _handle_arp(self, msg, datapath, port, pkt_ethernet, pkt_arp):
         """Handle ARP Setting method."""
@@ -145,6 +191,16 @@ class forwarding(app_manager.RyuApp):
                                                 arp_op=arp.ARP_REPLY)
                         ofputils.add_flow(out_datapath[0].dp, 10, match,
                                           actions)
+                actions_o = [parser.OFPActionOutput(dst.port)]
+                datapath_o = dst.datapath
+                out = parser.OFPPacketOut(datapath=datapath_o,
+                                          buffer_id=msg.buffer_id,
+                                          in_port=msg.match['in_port'],
+                                          actions=actions_o,
+                                          data=msg.data)
+                datapath.send_msg(out)
+            else:
+                self._broadcast_pkt(msg)
         else:
             self._broadcast_pkt(msg)
 
@@ -158,7 +214,10 @@ class forwarding(app_manager.RyuApp):
         net.add_edge(src_mac, int(src_dpid))
         net.add_edge(int(dst_dpid), dst_mac, {'port': int(dst_port)})
         net.add_edge(dst_mac, int(dst_dpid))
-        path = nx.shortest_path(net, src_mac, dst_mac)
+        try:
+            path = nx.shortest_path(net, src_mac, dst_mac)
+        except Exception:
+            path = None
         return path
 
     def _handle_member_info(self, datapath, port, pkt_ethernet, pkt_arp):
