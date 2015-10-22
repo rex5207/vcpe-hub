@@ -2,12 +2,13 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_3, ofproto_v1_4
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
-# settings.WAN_PORT = 1
+from config import settings
+# settings.wan_port = 1
 
 class L2Switch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -50,7 +51,7 @@ class L2Switch(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
-        if in_port == settings.WAN_PORT:
+        if in_port == settings.wan_port:
             # self.logger.info("ignore packet coming from WAN port 3")
             # ignore packet coming from WAN port
             return

@@ -24,6 +24,7 @@ def arp_reply(src_mac, src_ip, target_mac, target_ip):
     # Packet serializing
     pkt.serialize()
     data = pkt.data
+    # print 'Built up a arp reply packet:', data
     return data
 
 def broadcast_arp_request(src_mac, src_ip, target_ip):
@@ -39,6 +40,7 @@ def broadcast_arp_request(src_mac, src_ip, target_ip):
                              dst_ip=target_ip))
     pkt.serialize()
     data = pkt.data
+    # print 'Built up a broadcast arp request packet:', data
     return data
 
 if __name__ == '__main__':

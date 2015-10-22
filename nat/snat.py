@@ -6,7 +6,7 @@ from webob import Response
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_3, ofproto_v1_4
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 from ryu.lib.packet import packet
@@ -93,9 +93,12 @@ class SNAT(app_manager.RyuApp):
         datapath.send_msg(mod)
 
     def _send_packet_to_port(self, datapath, port, data):
+        # if not data:
+        #     return
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         actions = [parser.OFPActionOutput(port=port)]
+        # self.logger.info("packet-out %s" % (data,))
         out = parser.OFPPacketOut(datapath=datapath,
                                   buffer_id=ofproto.OFP_NO_BUFFER,
                                   in_port=ofproto.OFPP_CONTROLLER,
@@ -258,7 +261,7 @@ class SNAT(app_manager.RyuApp):
         self.add_flow(datapath, match=match_back, actions=actions_back,
                       idle_timeout=settings.IDLE_TIME, priority=10)
 
-        data = None
+        d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
             d = data
 
