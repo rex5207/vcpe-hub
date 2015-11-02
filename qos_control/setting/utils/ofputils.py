@@ -51,11 +51,10 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     inst = []
+    timeout = 10
     if state == 'up':
-        # inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
-        #         parser.OFPInstructionWriteMetadata(int(meter), 4294967295),
-        #         parser.OFPInstructionGotoTable(1)]
         if meter == -1:
+            timeout = 0
             actions = []
             inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
         else:
@@ -67,18 +66,18 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
     if buffer_id:
         mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                 priority=priority, match=match,
-                                idle_timeout=10, instructions=inst)
+                                idle_timeout=timeout, instructions=inst)
         if state == 'down':
             mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                     priority=priority, match=match,
-                                    idle_timeout=10, hard_timeout=10,
+                                    idle_timeout=timeout, hard_timeout=10,
                                     instructions=inst)
     else:
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                idle_timeout=10, match=match, instructions=inst)
+                                idle_timeout=timeout, match=match, instructions=inst)
         if state == 'down':
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    idle_timeout=10, hard_timeout=10,
+                                    idle_timeout=timeout, hard_timeout=10,
                                     match=match, instructions=inst)
     datapath.send_msg(mod)
 
