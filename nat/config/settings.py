@@ -13,4 +13,4 @@ nat_subnetwork = netaddr.IPNetwork('127.0.0.0/24')
 
 MAC_ON_WAN = '00:0e:c6:87:a6:fb'
 MAC_ON_LAN = '00:0e:c6:87:a6:fa'
-IDLE_TIME = 30
+IDLE_TIME = 100
