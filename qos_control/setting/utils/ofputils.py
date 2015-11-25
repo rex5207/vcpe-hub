@@ -12,10 +12,10 @@ def add_flow(datapath, priority, match, actions, buffer_id=None):
     if buffer_id:
         mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                 priority=priority, match=match,
-                                idle_timeout=100, instructions=inst)
+                                idle_timeout=10, instructions=inst)
     else:
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                idle_timeout=100, match=match, instructions=inst)
+                                idle_timeout=10, match=match, instructions=inst)
     datapath.send_msg(mod)
 
 
@@ -51,7 +51,7 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     inst = []
-    timeout = 100
+    timeout = 10
     if state == 'up':
         if meter == -1:
             timeout = 0
