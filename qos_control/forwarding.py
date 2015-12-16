@@ -21,6 +21,10 @@ from setting.db import collection
 import networkx as nx
 from setting.detect_gateway import utils as gateway_utils
 
+import logging
+import time
+import datetime
+
 class forwarding(app_manager.RyuApp):
 
     """forwarding Class."""
@@ -33,6 +37,8 @@ class forwarding(app_manager.RyuApp):
         self.topology_api_app = self
         self.broadip = '255.255.255.255'
         self.broadip2 = '0.0.0.0'
+        hdlr = logging.FileHandler('flow_statistic.log')
+        self.logger.addHandler(hdlr)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -114,6 +120,13 @@ class forwarding(app_manager.RyuApp):
                                                  ip_proto=pkt_ipv4.proto,
                                                  tcp_src=pkt_tcp.dst_port,
                                                  tcp_dst=pkt_tcp.src_port)
+                        ts = time.time()
+                        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+                        self.logger.info('%s %s %s %s %s %s',
+                                         pkt_ipv4.src, str(pkt_tcp.src_port),
+                                         pkt_ipv4.dst, str(pkt_tcp.dst_port),
+                                         pkt_ipv4.proto, st)
+
                     elif pkt_ipv4.proto == inet.IPPROTO_UDP:
                         pkt_udp = pkt.get_protocol(udp.udp)
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
@@ -132,6 +145,12 @@ class forwarding(app_manager.RyuApp):
                                                  ip_proto=pkt_ipv4.proto,
                                                  udp_src=pkt_udp.dst_port,
                                                  udp_dst=pkt_udp.src_port)
+                        ts = time.time()
+                        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+                        self.logger.info('%s %s %s %s %s %s',
+                                         pkt_ipv4.src, str(pkt_udp.src_port),
+                                         pkt_ipv4.dst, str(pkt_udp.dst_port),
+                                         pkt_ipv4.proto, st)
                     else:
                         match = parser.OFPMatch(eth_src=pkt_ethernet.src,
                                                 eth_dst=pkt_ethernet.dst,

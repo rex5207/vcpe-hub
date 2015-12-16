@@ -1,7 +1,22 @@
 import requests
 import hashlib
 from route import urls
+import time
 
+def timeit(method):
+
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print '%r (%r, %r) %2.2f sec' % \
+              (method.__name__, args, kw, te-ts)
+        return result
+
+    return timed
+
+@timeit
 def update_app_for_flows(flow_list, dp_ip):
     try:
         key_set = flow_list.keys()
@@ -14,7 +29,7 @@ def update_app_for_flows(flow_list, dp_ip):
                 url = 'http://140.114.71.176:2001/api/v1/flows/' + m.hexdigest()
                 response = requests.get(url)
                 str_id = flow_info.src_ip + flow_info.dst_ip + str(flow_info.src_port) + str(flow_info.dst_port) + str(flow_info.ip_proto)
-                urls.counter = urls.counter + 1
+                flow_info.counter = flow_info.counter + 1
                 # print '[INFO] Update app for flows'
                 # print ' >> counter:', urls.counter
                 # print ' >>id', str_id, m.hexdigest()
