@@ -94,7 +94,7 @@ class QosSetupRest(ControllerBase):
         dic = {}
         for key in data_collection.flow_list:
             flow_c = data_collection.flow_list[key]
-            if flow_c.counetr < 3 and flow_c.app == 'Others':
+            if flow_c.counter < 3 and flow_c.app == 'Others':
                 continue
             else:
                 list_f = {"src_mac": flow_c.src_mac, "dst_mac": flow_c.dst_mac,
