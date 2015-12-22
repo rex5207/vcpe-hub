@@ -45,7 +45,6 @@ class SimpleMonitor(app_manager.RyuApp):
     def _flow_stats_reply_handler(self, ev):
         data.blocking_flow = []
         body = ev.msg.body
-        self.logger.info(body)
         for stat in body:
             flow = {}
             if (stat.instructions == []):
@@ -59,6 +58,3 @@ class SimpleMonitor(app_manager.RyuApp):
                     flow.update({'tranProtocol': 'UDP'})
 
                 data.blocking_flow.append(flow)
-
-        # self.logger.info('flow info:')
-        # self.logger.info(data.blocking_flow)
