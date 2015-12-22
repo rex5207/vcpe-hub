@@ -7,7 +7,7 @@ A simple firewall based on ryu.
 ryu-manager l2switch.py simple_firewall.py flow_monitor.py
 ```
 
-### Architecture
+# Architecture
 ```sh
 ├── README.md       # document
 ├── config          # l2switch setting
@@ -23,27 +23,25 @@ ryu-manager l2switch.py simple_firewall.py flow_monitor.py
 ```
 
 
-
 # API Using Example
 
+### Access Control List
 **GET /api/firewall/acl**
-
 - tells us the current block list
-- api use example:
-
+- example:
 ```sh
 # it will return current blocking list
 $ curl -GET http://127.0.0.1:8080/api/firewall/acl
 {"flow":[
-  {"tranPort": 80,
-   "ipSrc": "10.0.0.1",
-   "tranProtocol": "TCP",
-   "ipDst": "10.0.0.2"},
-  {"tranPort": 443,
-   "ipSrc": "8.8.8.8",
-   "tranProtocol": "TCP",
-   "ipDst": null}
-  ]
+    {"tranPort": 80,
+     "ipSrc": "10.0.0.1",
+     "tranProtocol": "TCP",
+     "ipDst": "10.0.0.2"},
+    {"tranPort": 443,
+     "ipSrc": "8.8.8.8",
+     "tranProtocol": "TCP",
+     "ipDst": null}
+    ]
 }
 ```
 
@@ -54,13 +52,14 @@ $ curl -GET http://127.0.0.1:8080/api/firewall/acl
   - dstIP: destination IP you want to block
   - srcIP: source IP you want to block
   - protocol: A certain known protocol you want to block
-    - "HTTP", "FTP", "SSH", "TELNE", "HTTPS", "SMTP", "POP3", "IMAP"   
-- api use example:
+    - "HTTP", "FTP", "SSH", "TELNE", "HTTPS", "SMTP", "POP3", "NTP" "IMAP"   
+- example:
 ```sh
 $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP":"10.0.0.1","protocol":"HTTP","dstIP":"10.0.0.2"}' http://127.0.0.1:8080/api/firewall/acl/knownport
 ```
-- use case:
-  1. block a certain protocol for all hosts, eg. FTP
+
+- JSON use cases
+  - block a certain protocol for all hosts, eg. FTP
   ```sh
   {
       "ruleAction": "add",
@@ -69,7 +68,7 @@ $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP
       "protocol": "HTTP"
   }
   ```
-  2. block a certain source ip, eg. `10.0.0.1`
+  - block a certain source ip, eg. `10.0.0.1`
   ```sh
   {
       "ruleAction": "add",
@@ -78,7 +77,7 @@ $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP
       "protocol": ""
   }
   ```
-  3. to let certain user cannot use a certain protocol
+  - let certain user cannot use a certain protocol
   ```sh
   {
       "ruleAction": "add",
