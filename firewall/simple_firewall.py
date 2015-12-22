@@ -8,9 +8,9 @@ from ryu.ofproto import ether
 from ryu.ofproto import inet
 
 import data
+from route import urls
 
 simple_firewall_instance_name = 'simple_firewall_api_app'
-url = '/simpleswitch/mactable/{dpid}'
 
 
 class SimpleFirewall(app_manager.RyuApp):
@@ -92,7 +92,7 @@ class SimpleFirewallController(ControllerBase):
                                                        link, data, **config)
         self.simpl_switch_spp = data[simple_firewall_instance_name]
 
-    @route('firewall', '/firewall/acl', methods=['PUT'])
+    @route('firewall', urls.url_set_acl_knownport, methods=['PUT'])
     def block_rule(self, req, **kwargs):
         simple_firewall = self.simpl_switch_spp
         content = req.body
@@ -154,7 +154,7 @@ class SimpleFirewallController(ControllerBase):
 
         return Response(status=202)
 
-    @route('firewall', '/firewall/acl', methods=['GET'])
+    @route('firewall', urls.url_get_acl, methods=['GET'])
     def get_block_list(self, req, **kwargs):
         flowlist = data.blocking_flow
         dic = {'flow': flowlist}
