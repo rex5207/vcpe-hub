@@ -50,7 +50,7 @@ class SimpleFirewall(app_manager.RyuApp):
                                 match=match)
         datapath.send_msg(mod)
 
-    def add_block_rule(self, state, src_ip, dst_ip, trans_proto, port):
+    def add_block_rule(self, option, src_ip, dst_ip, trans_proto, port):
         switch_list = get_switch(self.topology_api_app, None)
         for switch in switch_list:
             datapath = switch.dp
@@ -79,9 +79,9 @@ class SimpleFirewall(app_manager.RyuApp):
             match = parser.OFPMatch(**match_dict)
             # self.logger.info(match)
 
-            if state == 'on':
+            if option == 'add':
                 self.add_flow(datapath, 1, match, actions)
-            elif state == 'off':  # 'off'
+            elif option == 'delete':  # 'off'
                 self.del_flow(datapath, match)
 
 
@@ -98,12 +98,12 @@ class SimpleFirewallController(ControllerBase):
         content = req.body
         json_data = json.loads(content)
 
-        state = str(json_data.get('state'))
+        option = str(json_data.get('option'))
         src_ip = str(json_data.get('srcIP'))
         dst_ip = str(json_data.get('dstIP'))
         protocol = str(json_data.get('protocol'))
 
-        rule = {'state': state}
+        rule = {'option': option}
         rule.update({'src_ip': src_ip, 'dst_ip': dst_ip})
         if protocol == 'HTTP':
             # HTTP -> TCP 80
