@@ -1,35 +1,28 @@
 import json
-# import ryu.app.ofctl.api
-# import logging
 
-# from ryu.app import simple_switch_13
 from webob import Response
-# from ryu.controller import ofp_event
-# from ryu.controller.handler import CONFIG_DISPATCHER
-# from ryu.controller.handler import set_ev_cls
 from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.topology.api import get_switch
-# from ryu.lib import dpid as dpid_lib
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 
 import data
 
-simple_switch_instance_name = 'simple_switch_api_app'
+simple_firewall_instance_name = 'simple_firewall_api_app'
 url = '/simpleswitch/mactable/{dpid}'
 
 
-class SimpleSwitchRest13(app_manager.RyuApp):
+class SimpleFirewall(app_manager.RyuApp):
 
     _CONTEXTS = {'wsgi': WSGIApplication}
 
     def __init__(self, *args, **kwargs):
-        super(SimpleSwitchRest13, self).__init__(*args, **kwargs)
+        super(SimpleFirewall, self).__init__(*args, **kwargs)
         self.switches = {}
         wsgi = kwargs['wsgi']
-        wsgi.register(SimpleSwitchController,
-                      {simple_switch_instance_name: self})
+        wsgi.register(SimpleFirewallController,
+                      {simple_firewall_instance_name: self})
         self.topology_api_app = self
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
@@ -69,7 +62,7 @@ class SimpleSwitchRest13(app_manager.RyuApp):
 
             # fill into the layer3 and layer 4 protocol
             # if port == 0, means block all protocol
-            if port > 0:
+            if port >= 0:
                 if trans_proto == inet.IPPROTO_TCP:
                     match_dict.update({'ip_proto': trans_proto})
                     match_dict.update({'tcp_dst': port})
@@ -84,7 +77,7 @@ class SimpleSwitchRest13(app_manager.RyuApp):
                 match_dict.update({'ipv4_dst': dst_ip})
 
             match = parser.OFPMatch(**match_dict)
-            self.logger.info(match)
+            # self.logger.info(match)
 
             if state == 'on':
                 self.add_flow(datapath, 1, match, actions)
@@ -92,21 +85,16 @@ class SimpleSwitchRest13(app_manager.RyuApp):
                 self.del_flow(datapath, match)
 
 
-class SimpleSwitchController(ControllerBase):
+class SimpleFirewallController(ControllerBase):
 
     def __init__(self, req, link, data, **config):
-        super(SimpleSwitchController, self).__init__(req, link, data, **config)
-        self.simpl_switch_spp = data[simple_switch_instance_name]
-
-    @route('hello', '/hello/{msg}', methods=['GET'])
-    def say_hello(self, req, **kwargs):
-        dic = {'message': kwargs['msg']}
-        body = json.dumps(dic)
-        return Response(content_type='application/json', body=body)
+        super(SimpleFirewallController, self).__init__(req,
+                                                       link, data, **config)
+        self.simpl_switch_spp = data[simple_firewall_instance_name]
 
     @route('firewall', '/firewall/acl', methods=['PUT'])
     def block_rule(self, req, **kwargs):
-        simple_switch = self.simpl_switch_spp
+        simple_firewall = self.simpl_switch_spp
         content = req.body
         json_data = json.loads(content)
 
@@ -122,65 +110,65 @@ class SimpleSwitchController(ControllerBase):
             # HTTP -> TCP 80
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 80})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'FTP':
             # FTP -> TCP 20
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 20})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
             # FTP -> TCP 21
             rule.update({'port': 21})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'SSH':
             # SSH -> TCP 22
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 22})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'TELNET':
             # TELNET -> TCP 23
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 23})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'HTTPS':
             # HTTPS -> TCP 443
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 443})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'SMTP':
             # SMTP -> TCP 25
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 25})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'POP3':
             # POP3 -> TCP 110
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 110})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'NTP':
             # NTP -> TCP 123
             rule.update({'port': 123})
             rule.update({'trans_proto': inet.IPPROTO_TCP})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
             # NTP -> UDP 123
             rule.update({'trans_proto': inet.IPPROTO_UDP})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == 'IMAP':
             # IMAP -> UDP 143
             rule.update({'trans_proto': inet.IPPROTO_TCP})
             rule.update({'port': 143})
-            simple_switch.add_block_rule(**rule)
+            simple_firewall.add_block_rule(**rule)
         elif protocol == '':
             # all protocol
             rule.update({'trans_proto': 0})
-            rule.update({'port': 0})
-            simple_switch.add_block_rule(**rule)
+            rule.update({'port': -1})
+            simple_firewall.add_block_rule(**rule)
 
         dic = {}
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
     @route('firewall', '/firewall/acl', methods=['GET'])
-    def block_test(self, req, **kwargs):
+    def get_block_list(self, req, **kwargs):
         flowlist = data.blocking_flow
         dic = {'flow': flowlist}
         body = json.dumps(dic)
