@@ -1,12 +1,13 @@
 import json
-import ryu.app.ofctl.api
+# import ryu.app.ofctl.api
 # import logging
 
-from ryu.app import simple_switch_13
+# from ryu.app import simple_switch_13
 from webob import Response
 # from ryu.controller import ofp_event
 # from ryu.controller.handler import CONFIG_DISPATCHER
 # from ryu.controller.handler import set_ev_cls
+from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.topology.api import get_switch
 # from ryu.lib import dpid as dpid_lib
@@ -19,7 +20,7 @@ simple_switch_instance_name = 'simple_switch_api_app'
 url = '/simpleswitch/mactable/{dpid}'
 
 
-class SimpleSwitchRest13(simple_switch_13.SimpleSwitch13):
+class SimpleSwitchRest13(app_manager.RyuApp):
 
     _CONTEXTS = {'wsgi': WSGIApplication}
 
@@ -30,6 +31,21 @@ class SimpleSwitchRest13(simple_switch_13.SimpleSwitch13):
         wsgi.register(SimpleSwitchController,
                       {simple_switch_instance_name: self})
         self.topology_api_app = self
+
+    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+                                    priority=priority, match=match,
+                                    instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
+                                    match=match, instructions=inst)
+        datapath.send_msg(mod)
 
     def del_flow(self, datapath, match):
         ofproto = datapath.ofproto
