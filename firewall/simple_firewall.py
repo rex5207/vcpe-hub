@@ -151,13 +151,12 @@ class SimpleFirewallController(ControllerBase):
             # all protocol
             rule.update({'trans_proto': 0, 'port': -1})
             simple_firewall.add_block_rule(**rule)
-        dic = {}
-        body = json.dumps(dic)
-        return Response(content_type='application/json', body=body)
+
+        return Response(status=202)
 
     @route('firewall', '/firewall/acl', methods=['GET'])
     def get_block_list(self, req, **kwargs):
         flowlist = data.blocking_flow
         dic = {'flow': flowlist}
         body = json.dumps(dic)
-        return Response(content_type='application/json', body=body)
+        return Response(status=200, content_type='application/json', body=body)
