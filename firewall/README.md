@@ -2,7 +2,13 @@
 
 A simple firewall based on ryu.
 
-# API using example
+
+# Run-Up Firewall
+```sh
+ryu-manager l2switch.py simple_firewall.py flow_monitor.py
+```
+
+# API Using Example
 
 **GET /api/firewall/acl**
 
