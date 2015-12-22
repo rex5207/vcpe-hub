@@ -52,11 +52,13 @@ class SimpleMonitor(app_manager.RyuApp):
                 flow.update({'ipSrc': stat.match.get('ipv4_src')})
                 flow.update({'ipDst': stat.match.get('ipv4_dst')})
                 if (stat.match.get('ip_proto') == inet.IPPROTO_TCP):
-                    flow.update({'protocol': stat.match.get('tcp_dst')})
+                    flow.update({'tranPort': stat.match.get('tcp_dst')})
+                    flow.update({'tranProtocol': 'TCP'})
                 else:
-                    flow.update({'protocol': stat.match.get('udp_dst')})
+                    flow.update({'tranPort': stat.match.get('udp_dst')})
+                    flow.update({'tranProtocol': 'UDP'})
 
                 data.blocking_flow.append(flow)
 
-        self.logger.info('flow info:')
-        self.logger.info(data.blocking_flow)
+        # self.logger.info('flow info:')
+        # self.logger.info(data.blocking_flow)
