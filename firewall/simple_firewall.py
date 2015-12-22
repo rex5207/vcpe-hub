@@ -149,7 +149,7 @@ class SimpleFirewallController(ControllerBase):
             simple_firewall.add_block_rule(**rule)
         elif protocol == '':
             # all protocol
-            rule.update({'trans_proto': 0, 'port': -1})
+            rule.update({'port': -1})
             simple_firewall.add_block_rule(**rule)
 
         return Response(status=202)
