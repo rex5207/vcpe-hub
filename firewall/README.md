@@ -59,7 +59,7 @@ $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP
 ```
 
 - JSON use cases
-  - block a certain protocol for all hosts, eg. FTP
+  - block a certain protocol for all hosts, eg. HTTP
   ```sh
   {
       "ruleAction": "add",
