@@ -2,18 +2,34 @@
 
 A simple firewall based on ryu.
 
-
-# Run-Up Firewall
+# Run-Up
 ```sh
 ryu-manager l2switch.py simple_firewall.py flow_monitor.py
 ```
+
+### Architecture
+```sh
+├── README.md       # document
+├── config          # l2switch setting
+│   ├── __init__.py
+│   ├── settings.py
+├── data.py
+├── flow_monitor.py # use to track blocking rule
+├── l2switch.py     # forwarding function
+├── route           # API route
+│   ├── __init__.py
+│   ├── urls.py     
+├── simple_firewall.py # main firewall function
+```
+
+
 
 # API Using Example
 
 **GET /api/firewall/acl**
 
 - tells us the current block list
-- example:
+- api use example:
 
 ```sh
 # it will return current blocking list
@@ -39,16 +55,35 @@ $ curl -GET http://127.0.0.1:8080/api/firewall/acl
   - srcIP: source IP you want to block
   - protocol: A certain known protocol you want to block
     - "HTTP", "FTP", "SSH", "TELNE", "HTTPS", "SMTP", "POP3", "IMAP"   
-  - example:
+- api use example:
+```sh
+$ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP":"10.0.0.1","protocol":"HTTP","dstIP":"10.0.0.2"}' http://127.0.0.1:8080/api/firewall/acl/knownport
+```
+- use case:
+  1. block a certain protocol for all hosts, eg. FTP
+  ```sh
+  {
+      "ruleAction": "add",
+      "srcIP": "",
+      "dstIP": "",
+      "protocol": "HTTP"
+  }
+  ```
+  2. block a certain source ip, eg. `10.0.0.1`
   ```sh
   {
       "ruleAction": "add",
       "srcIP": "10.0.0.1",
-      "dstIP": "10.0.0.2",
-      "protocol": "HTTP"
+      "dstIP": "",
+      "protocol": ""
   }
   ```
-- example:
-```sh
-$ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP":"10.0.0.1","protocol":"HTTP","dstIP":"10.0.0.2"}' http://127.0.0.1:8080/api/firewall/acl/knownport
-```
+  3. to let certain user cannot use a certain protocol
+  ```sh
+  {
+      "ruleAction": "add",
+      "srcIP": "10.0.0.1",
+      "dstIP": "",
+      "protocol": "FTP"
+  }
+  ```
