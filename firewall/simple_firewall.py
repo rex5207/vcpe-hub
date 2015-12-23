@@ -80,7 +80,7 @@ class SimpleFirewall(app_manager.RyuApp):
             # self.logger.info(match)
 
             if rule_action == 'add':
-                self.add_flow(datapath, 1, match, actions)
+                self.add_flow(datapath, 32768, match, actions)
             elif rule_action == 'delete':  # 'off'
                 self.del_flow(datapath, match)
 
