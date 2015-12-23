@@ -48,8 +48,8 @@ class SimpleMonitor(app_manager.RyuApp):
         for stat in body:
             flow = {}
             if (stat.instructions == []):
-                flow.update({'ipSrc': stat.match.get('ipv4_src')})
-                flow.update({'ipDst': stat.match.get('ipv4_dst')})
+                flow.update({'srcIP': stat.match.get('ipv4_src')})
+                flow.update({'dstIP': stat.match.get('ipv4_dst')})
                 if (stat.match.get('ip_proto') == inet.IPPROTO_TCP):
                     flow.update({'tranPort': stat.match.get('tcp_dst')})
                     flow.update({'tranProtocol': 'TCP'})
