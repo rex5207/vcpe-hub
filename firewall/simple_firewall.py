@@ -93,7 +93,7 @@ class SimpleFirewallController(ControllerBase):
         self.simpl_switch_spp = data[simple_firewall_instance_name]
 
     @route('firewall', urls.url_set_acl_knownport, methods=['PUT'])
-    def block_rule(self, req, **kwargs):
+    def block_rule_knownport(self, req, **kwargs):
         simple_firewall = self.simpl_switch_spp
         content = req.body
         json_data = json.loads(content)
