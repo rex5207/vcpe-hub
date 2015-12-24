@@ -154,6 +154,32 @@ class SimpleFirewallController(ControllerBase):
 
         return Response(status=202)
 
+    @route('firewall', urls.url_set_acl_customport, methods=['PUT'])
+    def block_rule_customport(self, req, **kwargs):
+        simple_firewall = self.simpl_switch_spp
+        content = req.body
+        json_data = json.loads(content)
+
+        rule_action = str(json_data.get('ruleAction'))
+        src_ip = str(json_data.get('srcIP'))
+        dst_ip = str(json_data.get('dstIP'))
+        tran_port = json_data.get('tranPort')
+        tran_protocol = str(json_data.get('tranProtocol'))
+
+        if tran_port < 0:
+            return Response(status=400)
+
+        if tran_protocol == 'TCP':
+            protocol = inet.IPPROTO_TCP
+        elif (tran_protocol == 'UDP'):
+            protocol = inet.IPPROTO_UDP
+        else:
+            protocol = -1
+
+        simple_firewall.add_block_rule(rule_action, src_ip, dst_ip,
+                                       protocol, tran_port)
+        return Response(status=202)
+
     @route('firewall', urls.url_get_acl, methods=['GET'])
     def get_block_list(self, req, **kwargs):
         flowlist = data.blocking_flow
