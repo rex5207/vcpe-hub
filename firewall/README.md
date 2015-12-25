@@ -86,3 +86,17 @@ $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP
       "protocol": "FTP"
   }
   ```
+
+  **PUT /api/firewall/acl/customport**
+  - set blocking rule based on a layer 4 port
+  - takes JSON:
+    - ruleAction: "add" or "delete" to specify the action of rule
+    - dstIP: destination IP you want to block
+    - srcIP: source IP you want to block
+    - tranProtocol: TCP or UDP
+    - tranPort: layer 4 port
+
+  - example:
+  ```sh
+  $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP":"10.0.0.1","dstIP":"10.0.0.2","tranProtocol":"TCP","tranPort":12345}' http://127.0.0.1:8080/api/firewall/acl/customport
+  ```
