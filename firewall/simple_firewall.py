@@ -90,11 +90,11 @@ class SimpleFirewallController(ControllerBase):
     def __init__(self, req, link, data, **config):
         super(SimpleFirewallController, self).__init__(req,
                                                        link, data, **config)
-        self.simpl_switch_spp = data[simple_firewall_instance_name]
+        self.simple_firewall_spp = data[simple_firewall_instance_name]
 
     @route('firewall', urls.url_set_acl_knownport, methods=['PUT'])
     def block_rule_knownport(self, req, **kwargs):
-        simple_firewall = self.simpl_switch_spp
+        simple_firewall = self.simple_firewall_spp
         content = req.body
         json_data = json.loads(content)
 
@@ -156,7 +156,7 @@ class SimpleFirewallController(ControllerBase):
 
     @route('firewall', urls.url_set_acl_customport, methods=['PUT'])
     def block_rule_customport(self, req, **kwargs):
-        simple_firewall = self.simpl_switch_spp
+        simple_firewall = self.simple_firewall_spp
         content = req.body
         json_data = json.loads(content)
 
