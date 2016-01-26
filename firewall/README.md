@@ -4,7 +4,7 @@ A simple firewall based on ryu.
 
 # Run-Up
 ```sh
-ryu-manager l2switch.py simple_firewall.py flow_monitor.py
+ryu-manager l2switch.py simple_firewall.py
 ```
 
 # Architecture
@@ -13,8 +13,7 @@ ryu-manager l2switch.py simple_firewall.py flow_monitor.py
 ├── config          # l2switch setting
 │   ├── __init__.py
 │   ├── settings.py
-├── data.py
-├── flow_monitor.py # use to track blocking rule
+├── data.py         # use to store flow list
 ├── l2switch.py     # forwarding function
 ├── route           # API route
 │   ├── __init__.py
