@@ -47,7 +47,7 @@ class SimpleFirewall(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         mod = parser.OFPFlowMod(datapath=datapath,
-                                command=ofproto.OFPFC_DELETE,
+                                command=ofproto.OFPFC_DELETE_STRICT,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
