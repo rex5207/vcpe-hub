@@ -6,6 +6,9 @@ from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.topology.api import get_switch
 from ryu.ofproto import ether
 from ryu.ofproto import inet
+from ryu.controller import ofp_event
+from ryu.controller.handler import set_ev_cls
+from ryu.controller.handler import MAIN_DISPATCHER
 
 import data
 from route import urls
@@ -44,7 +47,7 @@ class SimpleFirewall(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         mod = parser.OFPFlowMod(datapath=datapath,
-                                command=ofproto.OFPFC_DELETE,
+                                command=ofproto.OFPFC_DELETE_STRICT,
                                 out_port=ofproto.OFPP_ANY,
                                 out_group=ofproto.OFPG_ANY,
                                 match=match)
@@ -77,12 +80,40 @@ class SimpleFirewall(app_manager.RyuApp):
                 match_dict.update({'ipv4_dst': dst_ip})
 
             match = parser.OFPMatch(**match_dict)
-            # self.logger.info(match)
-
             if rule_action == 'add':
                 self.add_flow(datapath, 32768, match, actions)
             elif rule_action == 'delete':  # 'off'
                 self.del_flow(datapath, match)
+
+            self._request_stats(datapath)  # update flow list in data.py
+
+    def _request_stats(self, datapath):
+        self.logger.debug('send stats request: %016x', datapath.id)
+        # ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        req = parser.OFPFlowStatsRequest(datapath)
+        datapath.send_msg(req)
+
+    @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
+    def _flow_stats_reply_handler(self, ev):
+        data.blocking_flow = []
+        body = ev.msg.body
+        for stat in body:
+            flow = {}
+            if (stat.instructions == []):
+                flow.update({'srcIP': stat.match.get('ipv4_src')})
+                flow.update({'dstIP': stat.match.get('ipv4_dst')})
+                if (stat.match.get('ip_proto') == inet.IPPROTO_TCP):
+                    flow.update({'tranPort': stat.match.get('tcp_dst')})
+                    flow.update({'tranProtocol': 'TCP'})
+                elif (stat.match.get('ip_proto') == inet.IPPROTO_UDP):
+                    flow.update({'tranPort': stat.match.get('udp_dst')})
+                    flow.update({'tranProtocol': 'UDP'})
+                else:
+                    flow.update({'tranPort': ''})
+                    flow.update({'tranProtocol': ''})
+                data.blocking_flow.append(flow)
 
 
 class SimpleFirewallController(ControllerBase):
@@ -148,8 +179,8 @@ class SimpleFirewallController(ControllerBase):
             rule.update({'trans_proto': inet.IPPROTO_TCP, 'port': 143})
             simple_firewall.add_block_rule(**rule)
         elif protocol == '':
-            # all protocol
-            rule.update({'port': -1})
+            # all protocol, these two attr are don't care
+            rule.update({'trans_proto': -1, 'port': -1})
             simple_firewall.add_block_rule(**rule)
 
         return Response(status=202)
@@ -174,7 +205,9 @@ class SimpleFirewallController(ControllerBase):
         elif (tran_protocol == 'UDP'):
             protocol = inet.IPPROTO_UDP
         else:
+            # let the block function know this two attr are don't care
             protocol = -1
+            tran_port = -1
 
         simple_firewall.add_block_rule(rule_action, src_ip, dst_ip,
                                        protocol, tran_port)
