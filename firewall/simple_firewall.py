@@ -85,8 +85,7 @@ class SimpleFirewall(app_manager.RyuApp):
             elif rule_action == 'delete':  # 'off'
                 self.del_flow(datapath, match)
 
-            self._request_stats(datapath)
-
+            self._request_stats(datapath)  # update flow list in data.py
 
     def _request_stats(self, datapath):
         self.logger.debug('send stats request: %016x', datapath.id)
