@@ -1,0 +1,88 @@
+"""Project For Port Monitor on switches."""
+
+from ryu.base import app_manager
+from ryu.controller import ofp_event
+from ryu.topology.api import get_switch
+from ryu.controller.handler import set_ev_cls
+from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.lib import hub
+
+from ryu.app.wsgi import ControllerBase, WSGIApplication, route
+from webob import Response
+
+import json
+
+port_monitor_instance_name = 'simple_switch_api_app'
+url = '/api/portstats/{dpid}/allports'
+
+class PortStatMonitor(app_manager.RyuApp):
+
+    """Class for Port Monitor."""
+
+    _CONTEXTS = {'wsgi': WSGIApplication}
+
+    def __init__(self, *args, **kwargs):
+        """Initial method."""
+        super(PortStatMonitor, self).__init__(*args, **kwargs)
+        self.sw_port_stat = {}
+        self.current_rate = 0.0
+        self.topology_api_app = self
+        self.monitor_thread = hub.spawn(self._monitor)
+
+        wsgi = kwargs['wsgi']
+        wsgi.register(PortStatisticRest, {port_monitor_instance_name : self})
+
+    def _monitor(self):
+        while True:
+            switch_list = get_switch(self.topology_api_app, None)
+            for datapath in switch_list:
+                if self.sw_port_stat.get(datapath.dp.id) is None:
+                    port_stat = {}
+                    self.sw_port_stat = {datapath.dp.id: port_stat}
+                # print 'rate:', self.current_rate
+                self._request_stats(datapath.dp)
+            hub.sleep(5)
+
+    def _request_stats(self, datapath):
+        """Send PortStatsRequest method."""
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        req = parser.OFPPortStatsRequest(datapath, 0, ofproto.OFPP_ANY)
+        datapath.send_msg(req)
+
+    @set_ev_cls(ofp_event.EventOFPPortStatsReply, MAIN_DISPATCHER)
+    def _port_stats_reply_handler(self, ev):
+        """Handle PortStatsReply from switches method."""
+        sw_dpid = ev.msg.datapath.id
+        rate = 0
+        for stat in ev.msg.body:
+            counter_list = [stat.port_no, stat.rx_bytes, stat.tx_bytes]
+            port_stat = {stat.port_no: counter_list}
+            p_r = 0
+            p_t = 0
+
+            if self.sw_port_stat.get(sw_dpid).get(stat.port_no) is not None:
+                his_stat = self.sw_port_stat.get(sw_dpid).get(stat.port_no)
+                p_r = (counter_list[1] - his_stat[1])/5
+                p_t = (counter_list[2] - his_stat[2])/5
+
+                rate = rate + p_r + p_t
+
+            self.sw_port_stat.get(sw_dpid).update(port_stat)
+        # print '@', rate
+        self.current_rate = rate*8/1024
+
+
+class PortStatisticRest(ControllerBase):
+
+    def __init__(self, req, link, data, **config):
+        super(PortStatisticRest, self).__init__(req, link, data, **config)
+        self.simpl_port_app = data[port_monitor_instance_name]
+
+    @route('simpleswitch', url, methods=['GET'])
+    def get_port_info(self, req, **kwargs):
+        dpid = str(kwargs['dpid'])
+
+        all_port_rate = {'kbps': self.simpl_port_app.current_rate}
+        body = json.dumps(all_port_rate)
+        return Response(content_type='application/json', body=body)
