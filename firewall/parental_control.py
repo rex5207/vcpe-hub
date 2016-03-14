@@ -14,6 +14,7 @@ from ryu.lib.packet import udp
 # store which url is blocking
 import data
 from route import urls
+from config import settings
 
 parental_control_instance_name = 'parental_control_api_app'
 
@@ -46,7 +47,8 @@ class ParentalControl(app_manager.RyuApp):
         match = parser.OFPMatch({'udp_dst': 53})
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 100, match, actions)
+        priority = settings.DNS_packetin_priority
+        self.add_flow(datapath, priority, match, actions)
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
