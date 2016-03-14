@@ -4,13 +4,15 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.topology.api import get_switch
 from ryu.controller.handler import set_ev_cls
-from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import MAIN_DISPATCHER, DEAD_DISPATCHER
 from ryu.lib import hub
 
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from webob import Response
 
 import json
+
+from route import urls
 
 port_monitor_instance_name = 'simple_switch_api_app'
 url = '/api/portstats/{dpid}/allports'
@@ -25,6 +27,8 @@ class PortStatMonitor(app_manager.RyuApp):
         """Initial method."""
         super(PortStatMonitor, self).__init__(*args, **kwargs)
         self.sw_port_stat = {}
+        self.datapaths = {}
+        self.dpid_list = []
         self.current_rate = 0.0
         self.topology_api_app = self
         self.monitor_thread = hub.spawn(self._monitor)
@@ -32,13 +36,28 @@ class PortStatMonitor(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         wsgi.register(PortStatisticRest, {port_monitor_instance_name : self})
 
+    @set_ev_cls(ofp_event.EventOFPStateChange,
+                [MAIN_DISPATCHER, DEAD_DISPATCHER])
+    def _state_change_handler(self, ev):
+        datapath = ev.datapath
+        if ev.state == MAIN_DISPATCHER:
+            if not datapath.id in self.datapaths:
+                self.logger.debug('register datapath: %016x', datapath.id)
+                self.datapaths[datapath.id] = datapath
+                self.dpid_list.append(datapath.id)
+        elif ev.state == DEAD_DISPATCHER:
+            if datapath.id in self.datapaths:
+                self.logger.debug('unregister datapath: %016x', datapath.id)
+                del self.datapaths[datapath.id]
+                self.dpid_list.remove(datapath.id)
+
     def _monitor(self):
         while True:
             switch_list = get_switch(self.topology_api_app, None)
             for datapath in switch_list:
                 if self.sw_port_stat.get(datapath.dp.id) is None:
                     port_stat = {}
-                    self.sw_port_stat = {datapath.dp.id: port_stat}
+                    self.sw_port_stat.update({datapath.dp.id: port_stat})
                 # print 'rate:', self.current_rate
                 self._request_stats(datapath.dp)
             hub.sleep(5)
@@ -79,9 +98,17 @@ class PortStatisticRest(ControllerBase):
         super(PortStatisticRest, self).__init__(req, link, data, **config)
         self.simpl_port_app = data[port_monitor_instance_name]
 
-    @route('simpleswitch', url, methods=['GET'])
+    @route('simpleswitch', urls.url_switches, methods=['GET'])
+    def get_switches_list(self, req, **kwargs):
+        sorted(self.simpl_port_app.dpid_list)
+        dpid_list = {'dpid': sorted(self.simpl_port_app.dpid_list)}
+        body = json.dumps(dpid_list)
+        return Response(content_type='application/json', body=body)
+
+    @route('simpleswitch', urls.url_portstats, methods=['GET'])
     def get_port_info(self, req, **kwargs):
         dpid = str(kwargs['dpid'])
+        # self.simpl_port_app.sw_port_stat.get(dpid)
 
         all_port_rate = {'kbps': self.simpl_port_app.current_rate}
         body = json.dumps(all_port_rate)
