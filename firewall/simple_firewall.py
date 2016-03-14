@@ -12,6 +12,7 @@ from ryu.controller.handler import MAIN_DISPATCHER
 
 import data
 from route import urls
+from config import settings
 
 simple_firewall_instance_name = 'simple_firewall_api_app'
 
@@ -80,8 +81,9 @@ class SimpleFirewall(app_manager.RyuApp):
                 match_dict.update({'ipv4_dst': dst_ip})
 
             match = parser.OFPMatch(**match_dict)
+            fw_priority = settings.firewall_priority
             if rule_action == 'add':
-                self.add_flow(datapath, 32768, match, actions)
+                self.add_flow(datapath, fw_priority, match, actions)
             elif rule_action == 'delete':  # 'off'
                 self.del_flow(datapath, match)
 
