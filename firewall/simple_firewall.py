@@ -81,9 +81,9 @@ class SimpleFirewall(app_manager.RyuApp):
                 match_dict.update({'ipv4_dst': dst_ip})
 
             match = parser.OFPMatch(**match_dict)
-            priority = settings.firewall_priority
+            fw_priority = settings.firewall_priority
             if rule_action == 'add':
-                self.add_flow(datapath, priority, match, actions)
+                self.add_flow(datapath, fw_priority, match, actions)
             elif rule_action == 'delete':  # 'off'
                 self.del_flow(datapath, match)
 
