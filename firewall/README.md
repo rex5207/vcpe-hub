@@ -4,21 +4,24 @@ A simple firewall based on ryu.
 
 # Run-Up
 ```sh
-ryu-manager l2switch.py simple_firewall.py
+ryu-manager parental_control.py simple_firewall.py
 ```
 
 # Architecture
 ```sh
-├── README.md       # document
-├── config          # l2switch setting
+├── README.md           # document
+├── config              # l2switch setting
 │   ├── __init__.py
-│   ├── settings.py
-├── data.py         # use to store flow list
-├── l2switch.py     # forwarding function
-├── route           # API route
+│   ├── settings.py     # basic setting (ex: priority)
+├── data.py             # use to store flow list
+├── parental_control.py # basic forwarding function,
+│                       # forward DNS packet to controller,
+│                       # parse DNS packet and
+│                       # handle parental control
+├── route               # API route
 │   ├── __init__.py
 │   ├── urls.py     
-├── simple_firewall.py # main firewall function
+├── simple_firewall.py  # main firewall function
 ```
 
 
@@ -99,3 +102,26 @@ $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP
   ```sh
   $ curl -H "Content-Type: application/json" -X PUT -d '{"ruleAction":"add","srcIP":"10.0.0.1","dstIP":"10.0.0.2","tranProtocol":"TCP","tranPort":12345}' http://127.0.0.1:8080/api/firewall/acl/customport
   ```
+
+### Parental Control
+**GET /api/firewall/prnt_ctl**
+- tells us the current block url
+- example:
+```sh
+$ curl -GET http://127.0.0.1:8080/api/firewall/prnt_ctl
+{
+  "block_url": [
+    "tw.yahoo.com",
+    "google.com"
+  ]
+}
+```
+**PUT /api/fireall/prnt_ctl**
+- set blocking url
+- takes JSON:
+  - option: "add" or "delete"
+  - url: target url
+- example:
+```sh
+$ curl -H "Content-Type: application/json" -X PUT -d '{"option":"add", "url":"tw.yahoo.com"}' http://127.0.0.1:8080/api/firewall/prnt_ctl
+```
