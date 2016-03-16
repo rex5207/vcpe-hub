@@ -108,8 +108,21 @@ class PortStatisticRest(ControllerBase):
     @route('simpleswitch', urls.url_portstats, methods=['GET'])
     def get_port_info(self, req, **kwargs):
         dpid = str(kwargs['dpid'])
-        # self.simpl_port_app.sw_port_stat.get(dpid)
+        status_list = self.simpl_port_app.sw_port_stat.get(int(dpid))
 
-        all_port_rate = {'kbps': self.simpl_port_app.current_rate}
+        total = 0
+        rx = 0
+        tx = 0
+        if status_list is not None:
+            for port in status_list:
+                if port != 4294967294:
+                    statistic = status_list.get(port)
+                    total += statistic[1] + statistic[2]
+                    rx += statistic[1]
+                    tx += statistic[2]
+
+        print total, tx, rx
+        # all_port_rate = {'kbps': self.simpl_port_app.current_rate}
+        all_port_rate = {'total': total*8/1024, 'rx': rx*8/1024, 'tx': tx*8/1024}
         body = json.dumps(all_port_rate)
         return Response(content_type='application/json', body=body)
