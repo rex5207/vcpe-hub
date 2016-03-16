@@ -76,7 +76,7 @@ class PortStatMonitor(app_manager.RyuApp):
         rate = 0
         for stat in ev.msg.body:
             counter_list = [stat.port_no, stat.rx_bytes, stat.tx_bytes]
-            port_stat = {stat.port_no: counter_list}
+
             p_r = 0
             p_t = 0
 
@@ -86,9 +86,11 @@ class PortStatMonitor(app_manager.RyuApp):
                 p_t = (counter_list[2] - his_stat[2])/5
 
                 rate = rate + p_r + p_t
-
+            counter_list.append(p_r)
+            counter_list.append(p_t)
+            port_stat = {stat.port_no: counter_list}
             self.sw_port_stat.get(sw_dpid).update(port_stat)
-        # print '@', rate
+        print '@', rate
         self.current_rate = rate*8/1024
 
 
@@ -117,9 +119,9 @@ class PortStatisticRest(ControllerBase):
             for port in status_list:
                 if port != 4294967294:
                     statistic = status_list.get(port)
-                    total += statistic[1] + statistic[2]
-                    rx += statistic[1]
-                    tx += statistic[2]
+                    total += statistic[3] + statistic[4]
+                    rx += statistic[3]
+                    tx += statistic[4]
 
         print total, tx, rx
         # all_port_rate = {'kbps': self.simpl_port_app.current_rate}
