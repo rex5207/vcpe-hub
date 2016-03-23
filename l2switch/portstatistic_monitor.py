@@ -103,7 +103,10 @@ class PortStatisticRest(ControllerBase):
     @route('simpleswitch', urls.url_switches, methods=['GET'])
     def get_switches_list(self, req, **kwargs):
         sorted(self.simpl_port_app.dpid_list)
-        dpid_list = {'dpid': sorted(self.simpl_port_app.dpid_list)}
+        tmp = {'dpid': sorted(self.simpl_port_app.dpid_list)}
+        dpid_list = []
+        for dp in tmp:
+            dpid_list.append(str(dp))
         body = json.dumps(dpid_list)
         return Response(content_type='application/json', body=body)
 
