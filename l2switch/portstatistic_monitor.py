@@ -104,9 +104,10 @@ class PortStatisticRest(ControllerBase):
     def get_switches_list(self, req, **kwargs):
         sorted(self.simpl_port_app.dpid_list)
         tmp = {'dpid': sorted(self.simpl_port_app.dpid_list)}
-        dpid_list = []
-        for dp in tmp:
-            dpid_list.append(str(dp))
+        dpid_content = []
+        for dp in tmp['dpid']:
+            dpid_content.append(str(dp))
+        dpid_list = {'dpid': dpid_content}
         body = json.dumps(dpid_list)
         return Response(content_type='application/json', body=body)
 
