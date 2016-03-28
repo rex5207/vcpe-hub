@@ -15,7 +15,7 @@ import json
 from route import urls
 
 port_monitor_instance_name = 'simple_switch_api_app'
-url = '/api/portstats/{dpid}/allports'
+
 
 class PortStatMonitor(app_manager.RyuApp):
 
@@ -34,14 +34,14 @@ class PortStatMonitor(app_manager.RyuApp):
         self.monitor_thread = hub.spawn(self._monitor)
 
         wsgi = kwargs['wsgi']
-        wsgi.register(PortStatisticRest, {port_monitor_instance_name : self})
+        wsgi.register(PortStatisticRest, {port_monitor_instance_name: self})
 
     @set_ev_cls(ofp_event.EventOFPStateChange,
                 [MAIN_DISPATCHER, DEAD_DISPATCHER])
     def _state_change_handler(self, ev):
         datapath = ev.datapath
         if ev.state == MAIN_DISPATCHER:
-            if not datapath.id in self.datapaths:
+            if datapath.id not in self.datapaths:
                 self.logger.debug('register datapath: %016x', datapath.id)
                 self.datapaths[datapath.id] = datapath
                 self.dpid_list.append(datapath.id)
@@ -90,7 +90,7 @@ class PortStatMonitor(app_manager.RyuApp):
             counter_list.append(p_t)
             port_stat = {stat.port_no: counter_list}
             self.sw_port_stat.get(sw_dpid).update(port_stat)
-        print '@', rate
+        # print '@', rate
         self.current_rate = rate*8/1024
 
 
@@ -129,6 +129,8 @@ class PortStatisticRest(ControllerBase):
 
         print total, tx, rx
         # all_port_rate = {'kbps': self.simpl_port_app.current_rate}
-        all_port_rate = {'total': total*8/1024, 'rx': rx*8/1024, 'tx': tx*8/1024}
+        all_port_rate = {'total': total*8/1024,
+                         'rx': rx*8/1024,
+                         'tx': tx*8/1024}
         body = json.dumps(all_port_rate)
         return Response(content_type='application/json', body=body)
