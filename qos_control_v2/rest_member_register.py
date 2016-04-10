@@ -59,7 +59,7 @@ class member_register_rest(ControllerBase):
         super(member_register_rest, self).__init__(req, link, data, **config)
         self.get_member_info = data[get_member_info_instance_name]
 
-    @route('member_data', url, methods=['GET'])
+    @route('member_data', url, methods=['PUT'])
     def put_member_data_(self, req, **kwargs):
         """Put Member data method."""
         memberid = str(kwargs['memberid'])
