@@ -16,5 +16,5 @@ url_member_list_for_app = '/api/get_member_for_app/{app}'
 url_member_list = '/api/get_member_list'
 
 url_group_list = '/api/get_group_list'
-
+url_group_add = '/api/add_group/{groupid}'
 counter = 0

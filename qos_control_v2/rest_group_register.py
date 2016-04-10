@@ -13,6 +13,7 @@ from setting.utils import db_util
 from route import urls
 
 url = '/handle_group_info/topology/{groupid}'
+
 get_group_info_instance_name = 'get_group_info_api_app'
 
 
@@ -93,6 +94,34 @@ class group_setting_rest(ControllerBase):
 
         switch = group_switch.split(", ")
         switches = [int(sw) for sw in switch]
+
+        print switches
+        print links
+
+        net.add_nodes_from(switches)
+        net.add_edges_from(links)
+
+        self.get_group_info.save_data_to_database(str(groupid),
+                                                  net, switches, links)
+        return Response(content_type='application/json',
+                        body=str('Success'))
+
+    @route('group_data_2', urls.url_group_add, methods=['PUT'])
+    def put_group_data_2(self, req, **kwargs):
+        """Put Group data method."""
+        groupid = (kwargs['groupid'])
+
+        g_whole = data_collection.group_list.get('whole')
+        g_whole.switches
+        g_whole.links
+        net = nx.DiGraph()
+        switches = []
+        links = []
+
+        for sw in g_whole.switches:
+            switches.append(sw)
+        for link in g_whole.links:
+            links.append(link)
 
         print switches
         print links
