@@ -32,9 +32,12 @@ class QosSetup(app_manager.RyuApp):
                       {set_qos_info_instance_name: self})
 
     def set_qos_parameter(self, capacity):
-        constant.Capacity = capacity
+        constant.Capacity = int(capacity)
         switch_list = get_switch(self.topology_api_app, None)
         rate_setup.init_meter_setup(constant.Capacity, switch_list)
+
+    def set_qos_parameter_dynamic_en(self, en):
+        constant.NeedDynamicQos = int(en)
 
 
 # curl -X PUT http://127.0.0.1:8080/set_qos_info/2
@@ -44,6 +47,12 @@ class QosSetupRest(ControllerBase):
         """Initial Setting method."""
         super(QosSetupRest, self).__init__(req, link, data, **config)
         self.get_qos_info = data[set_qos_info_instance_name]
+
+    @route('qos_data', urls.url_dynamic_en, methods=['PUT'])
+    def set_qos_dynamic(self, req, **kwargs):
+        dynamic_en = str(kwargs['enable'])
+        self.get_qos_info.set_qos_parameter_dynamic_en(dynamic_en)
+        return Response(content_type='application/json', body=str('Success'))
 
     @route('qos_data', urls.url_capacity_set, methods=['PUT'])
     def set_qos_data(self, req, **kwargs):

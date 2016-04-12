@@ -17,4 +17,6 @@ url_member_list = '/api/get_member_list'
 
 url_group_list = '/api/get_group_list'
 url_group_add = '/api/add_group/{groupid}'
+
+url_dynamic_en = '/api/enable_dynamic_qos/{enable}'
 counter = 0

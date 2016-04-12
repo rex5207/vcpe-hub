@@ -47,7 +47,8 @@ class QosControl(app_manager.RyuApp):
             st = datetime.datetime.fromtimestamp(t1).strftime('%Y-%m-%d %H:%M:%S')
             self.logger.info('timestamp = %s', st)
             # self._control_manual()
-            self._control_dynamic(t0, t1)
+            if constant.NeedDynamicQos == 1:
+                self._control_dynamic(t0, t1)
             self.logger.info('---------------------')
             hub.sleep(5)
             t0 = t1
