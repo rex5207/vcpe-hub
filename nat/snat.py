@@ -15,7 +15,7 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.lib.packet import arp
-from ryu.lib.packet import ether_types
+# from ryu.lib.packet import ether_types
 import netaddr
 
 from pkt_utils import arp_pkt_gen
@@ -27,6 +27,7 @@ IP_TO_MAC_TABLE = {}
 
 nat_instance_name = 'nat_instance_api_app'
 
+
 class SNAT(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -36,7 +37,7 @@ class SNAT(app_manager.RyuApp):
         self.port_counter = -1
         self.ports_pool = range(2000, 65536)
         wsgi = kwargs['wsgi']
-        wsgi.register(SNATRest, {nat_instance_name : self})
+        wsgi.register(SNATRest, {nat_instance_name: self})
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -123,17 +124,17 @@ class SNAT(app_manager.RyuApp):
             # Tell 192.168.8.20(Host),
             # 192.168.8.1's fake MAC address (eth1)
             data = arp_pkt_gen.arp_reply(src_mac=settings.MAC_ON_LAN,
-                                    src_ip=settings.nat_private_ip,
-                                    target_mac=pkt_arp.src_mac,
-                                    target_ip=pkt_arp.src_ip)
+                                         src_ip=settings.nat_private_ip,
+                                         target_mac=pkt_arp.src_mac,
+                                         target_ip=pkt_arp.src_ip)
 
         elif pkt_arp.dst_ip == settings.nat_public_ip:
             # Who has 140.114.71.176 ?
             # Tell 140.114.71.xxx(Extranet Network host)
             data = arp_pkt_gen.arp_reply(src_mac=settings.MAC_ON_WAN,
-                                    src_ip=settings.nat_public_ip,
-                                    target_mac=pkt_arp.src_mac,
-                                    target_ip=pkt_arp.src_ip)
+                                         src_ip=settings.nat_public_ip,
+                                         target_mac=pkt_arp.src_mac,
+                                         target_ip=pkt_arp.src_ip)
 
         return data
 
@@ -187,8 +188,7 @@ class SNAT(app_manager.RyuApp):
 
         nat_port = self._get_available_port()
 
-        if (self._is_public(ipv4_dst) and
-            not self._in_nat_public_ip_subnetwork(ipv4_dst)):
+        if (self._is_public(ipv4_dst) and not self._in_nat_public_ip_subnetwork(ipv4_dst)):
             target_ip = settings.gateway
         elif self._in_nat_public_ip_subnetwork(ipv4_dst):
             target_ip = ipv4_dst
@@ -304,8 +304,7 @@ class SNAT(app_manager.RyuApp):
             # Packets from LAN port
             if pkt_ip:
 
-                if (self._in_private_subnetwork(pkt_ip.dst)
-                    and pkt_ip.dst != str(settings.private_subnetwork[1])):
+                if (self._in_private_subnetwork(pkt_ip.dst) and pkt_ip.dst != str(settings.private_subnetwork[1])):
                     # print "Private network %s" %pkt_ip.dst
                     # These packets are private network
                     # l2switch will handle it
@@ -324,8 +323,8 @@ class SNAT(app_manager.RyuApp):
 
                 # Sending ARP request to Gateway
                 arp_req_pkt = arp_pkt_gen.broadcast_arp_request(src_mac=settings.MAC_ON_WAN,
-                                                           src_ip=settings.nat_public_ip,
-                                                           target_ip=target_ip)
+                                                                src_ip=settings.nat_public_ip,
+                                                                target_ip=target_ip)
                 self._send_packet_to_port(datapath, settings.wan_port, arp_req_pkt)
 
                 if pkt_tcp:
@@ -354,6 +353,7 @@ class SNAT(app_manager.RyuApp):
                     self._send_packet_to_port(datapath, in_port, arp_reply_pkt)
                 elif pkt_arp.opcode == arp.ARP_REPLY:
                     pass
+
 
 class SNATRest(ControllerBase):
 
