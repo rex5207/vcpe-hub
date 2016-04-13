@@ -1,6 +1,6 @@
 ## Package
 
-- networkx
+- networkx, numpy, scipy
 
 ## Changelog
 
