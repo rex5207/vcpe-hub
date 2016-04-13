@@ -1,6 +1,6 @@
 """Method for evaluation."""
 from setting.flowclassification.record import statistic
-from setting.variables import constant
+from setting.variable import constant
 
 
 def app_evaluation(flow_list):
@@ -31,7 +31,7 @@ def app_evaluation(flow_list):
             statistic.database_app_record.pop(key)
         else:
             statistic.database_app_record[key].exist = 0
-            # print key, flow.rate
+            print key, flow.rate
 
 
 def member_evaluation(flow_list, member_list):
@@ -57,7 +57,7 @@ def member_evaluation(flow_list, member_list):
                 print tmp, member_list.get(tmp)
                 group_id = member_list.get(tmp).group_id
                 if group_id is not None:
-                    # print "group_id", group_id, "name", tmp
+                    print "group_id", group_id, "name", tmp
                     tmp_member_rate.update({tmp: statistic.Memeber_record(tmp, group_id)})
                     tmp_apprate = tmp_member_rate.get(tmp).apprate
                     tmp_apprate.update({flow_info.app: flow_info.rate})
@@ -72,7 +72,7 @@ def group_evaluation(member_list, group_list):
     tmp_group = {}
     for key in group_list:
         tmp_group.update({key: statistic.Group_record(key)})
-        # print key, group_list.get(key).members
+        print key, group_list.get(key).members
         for member in group_list.get(key).members:
             tmp_group.get(key).member.update({member: member_list.get(member)})
             print member, type(member_list.get(member))
