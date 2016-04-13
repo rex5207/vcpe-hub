@@ -9,11 +9,10 @@ from ryu.lib import hub
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 
-from setting.variables import constant
 from setting.db import data_collection
+from qos_control import Qos_UpdateEvent
 from setting.db import collection
 
-from qos_control import Qos_UpdateEvent
 
 class APP_UpdateEvent(EventBase):
     def __init__(self, msg):
@@ -21,11 +20,9 @@ class APP_UpdateEvent(EventBase):
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
-
-    """Flow Statistic Class."""
-
     _EVENTS = [APP_UpdateEvent]
     _EVENTS = [Qos_UpdateEvent]
+    """Flow Statistic Class."""
 
     def __init__(self, *args, **kwargs):
         """Initial Setting method."""
@@ -49,15 +46,16 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     print key, flow.rate, flow.app
             ev = APP_UpdateEvent('Update app for flow')
             self.send_event_to_observers(ev)
-
             switch_list = get_switch(self.topology_api_app, None)
             for dp in switch_list:
-                if str(dp.dp.id) == constant.Detect_switch_DPID:
-                    self._request_stats(dp.dp)
-            hub.sleep(5)
+                # if str(dp.dp.id) == constant.Detect_switch_DPID:
+                self._request_stats(dp.dp)
+                # break
+            hub.sleep(1)
 
     def _request_stats(self, datapath):
         parser = datapath.ofproto_parser
+
         req = parser.OFPFlowStatsRequest(datapath)
         datapath.send_msg(req)
 
@@ -66,14 +64,16 @@ class flowstatistic_monitor(app_manager.RyuApp):
         self.flow_list_re = {}
         for stat in ev.msg.body:
             if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
-                key_tuples = stat.match.get('eth_src')\
-                 + stat.match.get('eth_dst')\
-                 + stat.match.get('ipv4_src')\
-                 + stat.match.get('ipv4_dst')\
-                 + str(stat.match.get('ip_proto'))\
+                key_tuples = str(ev.msg.datapath.id)\
+                             + stat.match.get('eth_src')\
+                             + stat.match.get('eth_dst')\
+                             + stat.match.get('ipv4_src')\
+                             + stat.match.get('ipv4_dst')\
+                             + str(stat.match.get('ip_proto'))\
 
                 if stat.match.get('ip_proto') == inet.IPPROTO_TCP:
                     key_tuples += str(stat.match.get('tcp_src')) + str(stat.match.get('tcp_dst'))
+                    # print key_tuples
                     if data_collection.flow_list.get(key_tuples) is None:
                         flow_value = collection.Flow(ev.msg.datapath.id,
                                                      stat.match.get('eth_src'),
@@ -96,7 +96,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
 
                 elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(stat.match.get('udp_src'))\
-                                      +str(stat.match.get('udp_dst'))
+                                      + str(stat.match.get('udp_dst'))
                     if data_collection.flow_list.get(key_tuples) is None:
                         flow_value = collection.Flow(ev.msg.datapath.id,
                                                      stat.match.get('eth_src'),

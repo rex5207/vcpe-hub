@@ -4,10 +4,10 @@
 
 ## Changelog
 
-- 09/14/2015 first release
+- 04/13/2016 first release
 
 ## Usage
 
 ```
-ryu-manager flowstatistic_monitor.py forwarding.py initial.py qos_control.py rest_qos_set.py --observe-links
+ryu-manager initial.py flowclassify.py rest_group_register.py rest_member_register.py forwarding.py rest_meter_set.py rest_qosinfo_set.py portstatistic_monitor.py routing_adjustment.py qos_control.py rest_flow_get.py flowstatistic_monitor.py --observe-links
 ```

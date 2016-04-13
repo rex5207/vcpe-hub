@@ -8,8 +8,11 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.topology.api import get_switch, get_link
 from ryu.topology import event
 
+from setting.dynamic_qos.utils import rate_setup
 from setting.db import data_collection
 from setting.db import collection
+from setting.variable import constant
+
 import networkx as nx
 
 
@@ -42,11 +45,11 @@ class initial(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
         self.get_topology_data()
+        print constant.Controller_IP
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         """Handling Switch Feature Event."""
-        print """Handling Switch Feature Event."""
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -58,20 +61,43 @@ class initial(app_manager.RyuApp):
 
     def get_topology_data(self):
         """Topology Info Handling."""
+
+        net_sp = nx.Graph()
+
+
         self.net = nx.DiGraph()
 
         switch_list = get_switch(self.topology_api_app, None)
         switches = [switch.dp.id for switch in switch_list]
         self.net.add_nodes_from(switches)
 
+        net_sp.add_nodes_from(switches)
+
+
+        for switch in switch_list:
+           print switch.dp.id
+
         links_list = get_link(self.topology_api_app, None)
+
+
+
         links = [(link.src.dpid, link.dst.dpid, {'port': link.src.port_no})
                  for link in links_list]
+
+        print links
+
         self.net.add_edges_from(links)
 
         links = [(link.dst.dpid, link.src.dpid, {'port': link.dst.port_no})
                  for link in links_list]
         self.net.add_edges_from(links)
+
+
+
+        links = [(link.src.dpid, link.dst.dpid) for link in links_list]
+        net_sp.add_edges_from(links)
+        constant.ccc = nx.minimum_spanning_tree(net_sp)
+
 
         data_collection.switch_inner_port = []
         for link in links_list:
@@ -89,11 +115,15 @@ class initial(app_manager.RyuApp):
         group.links = links
 
         if data_collection.group_list.get('whole') is not None:
+            # print 'a'
             g = data_collection.group_list.get('whole')
+
             g.switches = group.switches
             g.topology = group.topology
             g.links = group.links
+            # print g.switches, g.topology, g.links
         else:
+            # print 'b'
             data_collection.group_list.update({'whole': group})
 
     @set_ev_cls(event.EventLinkAdd)
@@ -113,6 +143,9 @@ class initial(app_manager.RyuApp):
         """Switch add."""
         print "EventSwitchEnter"
         self.get_topology_data()
+        if constant.Capacity > 0:
+            switch_list = get_switch(self.topology_api_app, None)
+            rate_setup.init_meter_setup(constant.Capacity, switch_list)
 
     @set_ev_cls(event.EventSwitchLeave)
     def get_topology_for_swdelete(self, ev):
