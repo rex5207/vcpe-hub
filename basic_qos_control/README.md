@@ -1,10 +1,10 @@
 ## Package
 
-- networkx, numpy, scipy
+- networkx
 
 ## Changelog
 
-- 04/13/2016 first release
+- 04/19/2016 first release
 
 ## Usage
 
