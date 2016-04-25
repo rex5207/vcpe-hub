@@ -209,7 +209,7 @@ class QosSetupRest(ControllerBase):
         self.get_qos_info.set_ratelimite_for_mac(mac, meter_id, group_id, state)
 
     @route('rate_for_port', urls.url_flow_port, methods=['PUT'])
-    def set_flow_for_ratelimite_for_member(self, req, **kwargs):
+    def set_flow_for_ratelimite_for_port(self, req, **kwargs):
         port = str(kwargs['port'])
         content = req.body
         json_link = json.loads(content)
