@@ -46,3 +46,12 @@ class QosControl(app_manager.RyuApp):
                 else:
                     control.set_ratelimite_for_member(mac, setting_m.get(group).get(mac).get("meter_id"), group, 'down', 'm')
                     setting_m.get(group).pop(mac)
+
+        setting_p = setup.ratelimite_setup_for_specialcase_port
+        for group in setting_p.keys():
+            for port in setting_p.get(group).keys():
+                if setting_p.get(group).get(port).get('state') == 'up':
+                    control.set_ratelimite_for_port(port, setting_p.get(group).get(port).get("meter_id"), group, 'up', 'm')
+                else:
+                    control.set_ratelimite_for_port(port, setting_p.get(group).get(port).get("meter_id"), group, 'down', 'm')
+                    setting_p.get(group).pop(port)

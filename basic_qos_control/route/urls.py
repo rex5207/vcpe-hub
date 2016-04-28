@@ -2,6 +2,7 @@
 url_flow = '/api/flow_info_flow'
 url_flow_app = '/api/flow_info_app/{appname}'
 url_flow_member = '/api/flow_info_member/{mac}'
+url_flow_port = '/api/flow_info_l4/{port}'
 
 '''rest meter&capacity set'''
 url_meter_set = '/api/set_meter_info/{meterid}'
