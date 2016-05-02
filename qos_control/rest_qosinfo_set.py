@@ -10,6 +10,7 @@ from setting.db import data_collection
 from setting.variable import constant
 from setting.flowclassification.record import statistic
 from setting.dynamic_qos.utils import rate_setup
+from setting.ratelimitation.setting import setup
 
 from route import urls
 
@@ -63,10 +64,16 @@ class QosSetupRest(ControllerBase):
 
     @route('qos_data', urls.url_qos_app_list_get, methods=['GET'])
     def get_app_list(self, req, **kwargs):
-        app_list = statistic.database_app_record.keys()
+        group = str(kwargs['groupid'])
         dic = {}
-        for key in app_list:
-            dic.update({key: statistic.database_app_record[key].rate})
+        if group == 'whole':
+            app_list = statistic.database_app_record.keys()
+            for key in app_list:
+                dic.update({key: statistic.database_app_record[key].rate})
+        else:
+            for key in statistic.database_group_record[group].apprate:
+                dic.update({key: statistic.database_group_record[group].apprate[key]})
+
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
@@ -94,5 +101,21 @@ class QosSetupRest(ControllerBase):
                 members.append(member)
         dic = {}
         dic.update({app: members})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
+
+    @route('qos_policy', urls.url_qos_policy_get, methods=['GET'])
+    def get_qos_policy(self, req, **kwargs):
+        group = str(kwargs['groupid'])
+        dic = {}
+        policy = setup.ratelimite_setup_for_specialcase.get(group)
+        if policy is not None:
+            for app in policy:
+                if policy.get(app).get('state') == 'up':
+                    speed = 'drop'
+                    for sp in data_collection.meter_list:
+                        if str(policy.get(app).get('meter_id')) == data_collection.meter_list[sp]:
+                            speed = sp
+                    dic.update({app: {'meterid': policy.get(app).get('meter_id'), 'speed': speed}})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
