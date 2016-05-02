@@ -36,6 +36,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
         for key in key_set:
             flow_info = flow_list.get(key)
             if flow_info is not None and flow_info.app == 'Others':
+                print '#', key
                 m = hashlib.sha256()
                 m.update(flow_info.src_ip + flow_info.dst_ip
                          + str(flow_info.src_port) + str(flow_info.dst_port) + str(flow_info.ip_proto))
@@ -48,6 +49,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
                 if response.status_code == 200:
                     json_data = response.json()
                 else:
+                    m = hashlib.sha256()
                     m.update(flow_info.dst_ip + flow_info.src_ip
                              + str(flow_info.dst_port) + str(flow_info.src_port) + str(flow_info.ip_proto))
                     url = 'http://140.114.71.176:2001/api/v1/flows/' + m.hexdigest()
@@ -57,7 +59,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
                 if json_data is not None:
                     app_name = json_data.get('classifiedResult').get('classifiedName')
                     flow_info.app = app_name
-                    key_r = str(flow_info.dst_mac)+str(flow_info.src_mac)+\
+                    key_r = str(flow_info.dpid)+str(flow_info.dst_mac)+str(flow_info.src_mac)+\
                             str(flow_info.dst_ip)+str(flow_info.src_ip)+\
                             str(flow_info.ip_proto)+\
                             str(flow_info.dst_port)+str(flow_info.src_port)
@@ -88,7 +90,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
 #                     if tmp_result[0].get("Classified Result").get("Classified Name") is not None:
 #                         app_name = tmp_result[0].get("Classified Result").get("Classified Name")
 #                         flow_info.app = app_name
-#                         key_r = str(flow_info.dst_mac)+str(flow_info.src_mac) + \
+#                         key_r = str(flow_info.dpid)+str(flow_info.dst_mac)+str(flow_info.src_mac) + \
 #                                 str(flow_info.dst_ip)+str(flow_info.src_ip) + \
 #                                 str(flow_info.ip_proto) + \
 #                                 str(flow_info.dst_port)+str(flow_info.src_port)
@@ -106,7 +108,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
 #                         if tmp_result[0].get("Classified Result").get("Classified Name") is not None:
 #                             app_name = tmp_result[0].get("Classified Result").get("Classified Name")
 #                             flow_info.app = app_name
-#                             key_r = str(flow_info.src_mac)+str(flow_info.dst_mac)+\
+#                             key_r = str(flow_info.dpid)+str(flow_info.src_mac)+str(flow_info.dst_mac)+\
 #                                     str(flow_info.src_ip)+str(flow_info.dst_ip)+\
 #                                     str(flow_info.ip_proto)+\
 #                                     str(flow_info.src_port)+str(flow_info.dst_port)
