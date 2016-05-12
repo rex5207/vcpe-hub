@@ -8,7 +8,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
 from config import settings
-# settings.wan_port = 1
+
 
 class L2Switch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -17,16 +17,16 @@ class L2Switch(app_manager.RyuApp):
         super(L2Switch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
-        datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        match = parser.OFPMatch()
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
+    # @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    # def switch_features_handler(self, ev):
+    #     datapath = ev.msg.datapath
+    #     ofproto = datapath.ofproto
+    #     parser = datapath.ofproto_parser
+    #
+    #     match = parser.OFPMatch()
+    #     actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+    #                                       ofproto.OFPCML_NO_BUFFER)]
+    #     self.add_flow(datapath, 0, match, actions)
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto

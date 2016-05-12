@@ -4,7 +4,7 @@ from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.topology.api import get_switch
 from ryu.controller.handler import set_ev_cls
-from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import MAIN_DISPATCHER, DEAD_DISPATCHER
 from ryu.lib import hub
 
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
@@ -12,8 +12,10 @@ from webob import Response
 
 import json
 
+from route import urls
+
 port_monitor_instance_name = 'simple_switch_api_app'
-url = '/api/portstats/{dpid}/allports'
+
 
 class PortStatMonitor(app_manager.RyuApp):
 
@@ -25,12 +27,29 @@ class PortStatMonitor(app_manager.RyuApp):
         """Initial method."""
         super(PortStatMonitor, self).__init__(*args, **kwargs)
         self.sw_port_stat = {}
+        self.datapaths = {}
+        self.dpid_list = []
         self.current_rate = 0.0
         self.topology_api_app = self
         self.monitor_thread = hub.spawn(self._monitor)
 
         wsgi = kwargs['wsgi']
-        wsgi.register(PortStatisticRest, {port_monitor_instance_name : self})
+        wsgi.register(PortStatisticRest, {port_monitor_instance_name: self})
+
+    @set_ev_cls(ofp_event.EventOFPStateChange,
+                [MAIN_DISPATCHER, DEAD_DISPATCHER])
+    def _state_change_handler(self, ev):
+        datapath = ev.datapath
+        if ev.state == MAIN_DISPATCHER:
+            if datapath.id not in self.datapaths:
+                self.logger.debug('register datapath: %016x', datapath.id)
+                self.datapaths[datapath.id] = datapath
+                self.dpid_list.append(datapath.id)
+        elif ev.state == DEAD_DISPATCHER:
+            if datapath.id in self.datapaths:
+                self.logger.debug('unregister datapath: %016x', datapath.id)
+                del self.datapaths[datapath.id]
+                self.dpid_list.remove(datapath.id)
 
     def _monitor(self):
         while True:
@@ -38,7 +57,7 @@ class PortStatMonitor(app_manager.RyuApp):
             for datapath in switch_list:
                 if self.sw_port_stat.get(datapath.dp.id) is None:
                     port_stat = {}
-                    self.sw_port_stat = {datapath.dp.id: port_stat}
+                    self.sw_port_stat.update({datapath.dp.id: port_stat})
                 # print 'rate:', self.current_rate
                 self._request_stats(datapath.dp)
             hub.sleep(5)
@@ -57,7 +76,7 @@ class PortStatMonitor(app_manager.RyuApp):
         rate = 0
         for stat in ev.msg.body:
             counter_list = [stat.port_no, stat.rx_bytes, stat.tx_bytes]
-            port_stat = {stat.port_no: counter_list}
+
             p_r = 0
             p_t = 0
 
@@ -67,7 +86,9 @@ class PortStatMonitor(app_manager.RyuApp):
                 p_t = (counter_list[2] - his_stat[2])/5
 
                 rate = rate + p_r + p_t
-
+            counter_list.append(p_r)
+            counter_list.append(p_t)
+            port_stat = {stat.port_no: counter_list}
             self.sw_port_stat.get(sw_dpid).update(port_stat)
         # print '@', rate
         self.current_rate = rate*8/1024
@@ -79,10 +100,37 @@ class PortStatisticRest(ControllerBase):
         super(PortStatisticRest, self).__init__(req, link, data, **config)
         self.simpl_port_app = data[port_monitor_instance_name]
 
-    @route('simpleswitch', url, methods=['GET'])
+    @route('simpleswitch', urls.url_switches, methods=['GET'])
+    def get_switches_list(self, req, **kwargs):
+        sorted(self.simpl_port_app.dpid_list)
+        tmp = {'dpid': sorted(self.simpl_port_app.dpid_list)}
+        dpid_content = []
+        for dp in tmp['dpid']:
+            dpid_content.append(str(dp))
+        dpid_list = {'dpid': dpid_content}
+        body = json.dumps(dpid_list)
+        return Response(content_type='application/json', body=body)
+
+    @route('simpleswitch', urls.url_portstats, methods=['GET'])
     def get_port_info(self, req, **kwargs):
         dpid = str(kwargs['dpid'])
+        status_list = self.simpl_port_app.sw_port_stat.get(int(dpid))
 
-        all_port_rate = {'kbps': self.simpl_port_app.current_rate}
+        total = 0
+        rx = 0
+        tx = 0
+        if status_list is not None:
+            for port in status_list:
+                if port != 4294967294:
+                    statistic = status_list.get(port)
+                    total += statistic[3] + statistic[4]
+                    rx += statistic[3]
+                    tx += statistic[4]
+
+        print total, tx, rx
+        # all_port_rate = {'kbps': self.simpl_port_app.current_rate}
+        all_port_rate = {'total': total*8/1024,
+                         'rx': rx*8/1024,
+                         'tx': tx*8/1024}
         body = json.dumps(all_port_rate)
         return Response(content_type='application/json', body=body)
