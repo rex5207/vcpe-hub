@@ -10,7 +10,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import set_ev_cls
 from ryu.controller.handler import MAIN_DISPATCHER
 
-import data
+import block_data
 from route import urls
 from config import settings
 
@@ -99,7 +99,7 @@ class SimpleFirewall(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
-        data.blocking_flow = []
+        block_data.blocking_flow = []
         body = ev.msg.body
         for stat in body:
             flow = {}
@@ -115,7 +115,7 @@ class SimpleFirewall(app_manager.RyuApp):
                 else:
                     flow.update({'tranPort': ''})
                     flow.update({'tranProtocol': ''})
-                data.blocking_flow.append(flow)
+                block_data.blocking_flow.append(flow)
 
 
 class SimpleFirewallController(ControllerBase):
@@ -217,7 +217,7 @@ class SimpleFirewallController(ControllerBase):
 
     @route('firewall', urls.url_get_acl, methods=['GET'])
     def get_block_list(self, req, **kwargs):
-        flowlist = data.blocking_flow
+        flowlist = block_data.blocking_flow
         dic = {'flow': flowlist}
         body = json.dumps(dic)
         return Response(status=200, content_type='application/json', body=body)

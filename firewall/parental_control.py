@@ -6,13 +6,15 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ether
+from ryu.ofproto import inet
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 from ryu.lib.packet import udp
 
 # store which url is blocking
-import data
+import block_data
 from route import urls
 from config import settings
 
@@ -44,11 +46,13 @@ class ParentalControl(app_manager.RyuApp):
         self.add_flow(datapath, 0, match, actions)
 
         # foward DNS packet to controller
-        match = parser.OFPMatch({'udp_dst': 53})
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                          ofproto.OFPCML_NO_BUFFER)]
+        prnt_match = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                     ip_proto=inet.IPPROTO_UDP,
+                                     udp_dst=53)
+        prnt_actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                               ofproto.OFPCML_NO_BUFFER)]
         priority = settings.DNS_packetin_priority
-        self.add_flow(datapath, priority, match, actions)
+        self.add_flow(datapath, priority, prnt_match, prnt_actions)
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
@@ -119,7 +123,7 @@ class ParentalControl(app_manager.RyuApp):
             request_url = self.parse_DNS(dns_msg)
             print 'DNS packet: ' + request_url
 
-        if not is_DNS or (is_DNS and request_url not in data.blocking_url):
+        if not is_DNS or (is_DNS and request_url not in block_data.blocking_url):
             # send packet back
             if is_DNS:
                 print 'send DNS back to switch'
@@ -163,7 +167,7 @@ class ParentalControlController(ControllerBase):
 
     @route('firewall', urls.url_get_prnt_ctrl, methods=['GET'])
     def get_block_url(self, req, **kwargs):
-        dic = {'block_url': data.blocking_url}
+        dic = {'block_url': block_data.blocking_url}
         body = json.dumps(dic)
         return Response(status=200, content_type='application/json', body=body)
 
@@ -179,12 +183,12 @@ class ParentalControlController(ControllerBase):
         url = str(json_data.get('url'))
 
         if option == 'add':
-            if url not in data.blocking_url:
-                data.blocking_url.append(url)
+            if url not in block_data.blocking_url:
+                block_data.blocking_url.append(url)
             return Response(status=202)
         elif option == 'delete':
-            if url in data.blocking_url:
-                data.blocking_url.remove(url)
+            if url in block_data.blocking_url:
+                block_data.blocking_url.remove(url)
                 return Response(status=202)
 
         return Response(status=400)
