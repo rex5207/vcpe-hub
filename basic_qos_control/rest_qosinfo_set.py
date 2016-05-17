@@ -231,3 +231,13 @@ class QosSetupRest(ControllerBase):
         self.get_qos_info.set_meter_to_switches(meterid, bandwidth, command)
         return Response(content_type='application/json',
                             body=str('Success'))
+
+    @route('dpid_data', urls.url_dpid_list, methods=['GET'])
+    def get_dpid_list(self, req, **kwargs):
+        dic = {}
+        group_data = data_collection.group_list.get('whole')
+        switch_list = group_data.switches
+        for dp in switch_list:
+            dic.update({dp: dp})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
