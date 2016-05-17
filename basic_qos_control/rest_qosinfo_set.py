@@ -46,6 +46,9 @@ class QosSetup(app_manager.RyuApp):
     def set_qos_parameter_dynamic_en(self, en):
         constant.NeedDynamicQos = int(en)
 
+    def set_switch_G(self, sw):
+        constant.Detect_switch_DPID = sw
+
     def set_ratelimite_for_app(self, appname, meter_id, group_id, state):
         """Set rate control for applications."""
         if setup.ratelimite_setup_for_specialcase.get(group_id) is not None:
@@ -229,5 +232,22 @@ class QosSetupRest(ControllerBase):
         bandwidth = str(json_link.get('bandwidth'))
         command = str(json_link.get('command'))
         self.get_qos_info.set_meter_to_switches(meterid, bandwidth, command)
+        return Response(content_type='application/json',
+                            body=str('Success'))
+
+    @route('dpid_data', urls.url_dpid_list, methods=['GET'])
+    def get_dpid_list(self, req, **kwargs):
+        dic = {}
+        group_data = data_collection.group_list.get('whole')
+        switch_list = group_data.switches
+        for dp in switch_list:
+            dic.update({dp: dp})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
+
+    @route('switch_set', urls.url_dpid_set, methods=['PUT'])
+    def set_switch_data_(self, req, **kwargs):
+        dpid = str(kwargs['dpid'])
+        self.get_qos_info.set_switch_G(dpid)
         return Response(content_type='application/json',
                             body=str('Success'))

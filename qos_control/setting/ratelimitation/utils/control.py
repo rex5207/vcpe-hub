@@ -101,7 +101,7 @@ def set_ratelimite_for_member(member, meter_id, group, state, d_or_m):
                                     udp_dst=flow.dst_port)
         priority = 20
         if d_or_m == 'm':
-            priority = 30
+            priority = 50
         elif d_or_m == 'o':
             priority = 10
 

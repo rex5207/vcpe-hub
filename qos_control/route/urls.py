@@ -20,4 +20,7 @@ url_group_list = '/api/get_group_list'
 url_group_add = '/api/add_group/{groupid}'
 
 url_dynamic_en = '/api/enable_dynamic_qos/{enable}'
+
+url_dpid_list = '/api/get_dpid_list'
+url_dpid_set = '/api/set_dpid/{dpid}'
 counter = 0
