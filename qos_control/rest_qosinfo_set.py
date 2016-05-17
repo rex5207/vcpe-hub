@@ -40,6 +40,9 @@ class QosSetup(app_manager.RyuApp):
     def set_qos_parameter_dynamic_en(self, en):
         constant.NeedDynamicQos = int(en)
 
+    def set_switch_G(self, sw):
+        constant.Detect_switch_DPID = sw
+
 
 # curl -X PUT http://127.0.0.1:8080/set_qos_info/2
 class QosSetupRest(ControllerBase):
@@ -130,3 +133,10 @@ class QosSetupRest(ControllerBase):
             dic.update({dp: dp})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
+
+    @route('switch_set', urls.url_dpid_set, methods=['PUT'])
+    def set_switch_data_(self, req, **kwargs):
+        dpid = str(kwargs['dpid'])
+        self.get_qos_info.set_switch_G(dpid)
+        return Response(content_type='application/json',
+                            body=str('Success'))
