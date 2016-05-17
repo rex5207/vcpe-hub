@@ -282,12 +282,11 @@ class forwarding(app_manager.RyuApp):
             m_src = data_collection.member_list.get(src_mac)
             m_dst = data_collection.member_list.get(dst_mac)
             if m_dst is not None and m_src is not None:
-                if m_dst.group_id == m_src.group_id:
-                    if constant.enable_ns == 1:
-                        if m_dst.group_id != 'whole':
-                            check = m_dst.group_id
-                    else:
+                if constant.enable_ns == 1:
+                    if m_dst.group_id == m_src.group_id:
                         check = m_dst.group_id
+                else:
+                    check = 'whole'
         # print 'check', check
         return check
 
