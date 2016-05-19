@@ -36,7 +36,6 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
         for key in key_set:
             flow_info = flow_list.get(key)
             if flow_info is not None and flow_info.app == 'Others':
-                print '#', key
                 m = hashlib.sha256()
                 m.update(flow_info.src_ip + flow_info.dst_ip
                          + str(flow_info.src_port) + str(flow_info.dst_port) + str(flow_info.ip_proto))
