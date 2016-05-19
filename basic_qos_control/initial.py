@@ -92,7 +92,10 @@ class initial(app_manager.RyuApp):
                  for link in links_list]
         self.net.add_edges_from(links)
 
-
+        group = collection.Group('whole')
+        group.topology = self.net
+        group.switches = switches
+        group.links = links
 
         links = [(link.src.dpid, link.dst.dpid) for link in links_list]
         net_sp.add_edges_from(links)
@@ -108,11 +111,6 @@ class initial(app_manager.RyuApp):
                 data_collection.switch_inner_port.append(inner_port1)
             if inner_port2 not in data_collection.switch_inner_port:
                 data_collection.switch_inner_port.append(inner_port2)
-
-        group = collection.Group('whole')
-        group.topology = self.net
-        group.switches = switches
-        group.links = links
 
         if data_collection.group_list.get('whole') is not None:
             # print 'a'
