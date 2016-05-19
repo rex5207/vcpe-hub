@@ -289,6 +289,8 @@ class forwarding(app_manager.RyuApp):
                         check = m_dst.group_id
                 else:
                     check = 'whole'
+            else:
+                check = 'whole'
         # print 'check', check
         return check
 
