@@ -61,7 +61,7 @@ class forwarding(app_manager.RyuApp):
         elif pkt_ipv4:
             gateway_utils.detect_gateway_main(pkt, datapath, in_port, data_collection.member_list)
             # print 'ipv4'
-            if (pkt_eth.dst == mac.BROADCAST):
+            if (pkt_eth.dst == mac.BROADCAST_STR):
                 self._broadcast_pkt(msg)
             elif (pkt_ipv4.dst == self.broadip) or (pkt_ipv4.dst == self.broadip2):
                 self._broadcast_pkt(msg)
@@ -164,17 +164,19 @@ class forwarding(app_manager.RyuApp):
 
                     ofputils.add_flow(out_datapath[0].dp, 10, match, actions)
                     ofputils.add_flow(out_datapath[0].dp, 10, match2, actions2)
-            actions_o = [parser.OFPActionOutput(m_dst.port)]
-            datapath_o = m_dst.datapath
-            data = None
-            if msg.buffer_id == datapath.ofproto.OFP_NO_BUFFER:
-                data = msg.data
-            out = parser.OFPPacketOut(datapath=datapath_o,
-                                      buffer_id=msg.buffer_id,
-                                      in_port=msg.match['in_port'],
-                                      actions=actions_o,
-                                      data=data)
-            datapath_o.send_msg(out)
+
+                    if datapath.id == out_datapath[0].dp.id:
+                        actions_o = actions
+                        datapath_o = datapath
+                        data = None
+                        if msg.buffer_id == datapath.ofproto.OFP_NO_BUFFER:
+                            data = msg.data
+                        out = parser.OFPPacketOut(datapath=datapath_o,
+                                                  buffer_id=msg.buffer_id,
+                                                  in_port=msg.match['in_port'],
+                                                  actions=actions_o,
+                                                  data=data)
+                        datapath_o.send_msg(out)
         else:
             self._broadcast_pkt(msg)
 
@@ -287,6 +289,8 @@ class forwarding(app_manager.RyuApp):
                         check = m_dst.group_id
                 else:
                     check = 'whole'
+            else:
+                check = 'whole'
         # print 'check', check
         return check
 
@@ -316,34 +320,37 @@ class forwarding(app_manager.RyuApp):
         group = data_collection.group_list.get('whole')
         net = group.topology
         aaa = constant.ccc.edge.get(datapath.id)
+
+        if aaa is None:
+            return
+
         lis = aaa.keys()
         switch = data_collection.switch_stat.get(datapath.id)
+
+        data = None
+        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+            data = msg.data
+        actions = []
+
         if switch is not None and lis is not None:
             port_list = switch.get('alive_port')
             a = []
             for ppp in port_list:
                 a.append(ppp)
-            # print 'list', port_list, datapath.id
             for sw in lis:
                 port = net[datapath.id][sw]['port']
                 if port != msg.match['in_port']:
-                    # print 'p', port
-                    actions = [parser.OFPActionOutput(port)]
-                    out = parser.OFPPacketOut(datapath=datapath,
-                                              in_port=msg.match['in_port'],
-                                              buffer_id=ofproto.OFP_NO_BUFFER,
-                                              actions=actions,
-                                              data=msg.data)
-                    datapath.send_msg(out)
+                    actions.append(parser.OFPActionOutput(port))
                 a.remove(port)
 
             for port in a:
                 tuple_p = (datapath.id, port)
                 if tuple_p not in data_collection.switch_inner_port:
-                    actions = [parser.OFPActionOutput(port)]
-                    out = parser.OFPPacketOut(datapath=datapath,
-                                              in_port=msg.match['in_port'],
-                                              buffer_id=ofproto.OFP_NO_BUFFER,
-                                              actions=actions,
-                                              data=msg.data)
-                    datapath.send_msg(out)
+                    actions.append(parser.OFPActionOutput(port))
+
+            out = parser.OFPPacketOut(datapath=datapath,
+                                      in_port=msg.match['in_port'],
+                                      buffer_id=msg.buffer_id,
+                                      actions=actions,
+                                      data=data)
+            datapath.send_msg(out)
