@@ -479,3 +479,16 @@ class SNATRest(ControllerBase):
 
         body = json.dumps(dic)
         return Response(status=200, content_type='application/json', body=body)
+
+    @route('dhcp_settings_get', urls.url_dhcp_config_get, methods=['GET'])
+    def dhcp_config_get(self, req, **kwargs):
+        dhcp_settings = settings.load()
+        dic = {}
+
+        dic['dhcp_gw_addr'] = str(dhcp_settings['dhcp_gw_addr'])
+        dic['broadcast_addr'] = str(dhcp_settings['broadcast_addr'])
+        dic['dns_addr'] = str(dhcp_settings['dns_addr'])
+        dic['dhcp_hw_addr'] = str(dhcp_settings['dhcp_hw_addr'])
+
+        body = json.dumps(dic)
+        return Response(status=200, content_type='application/json', body=body)
