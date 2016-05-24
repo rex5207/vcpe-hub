@@ -73,7 +73,7 @@ class member_register_rest(ControllerBase):
             return Response(content_type='application/json',
                             body=str('Success'))
 
-    @route('member_list', urls.url_member_list, methods=['PUT'])
+    @route('member_list', urls.url_member_list, methods=['GET'])
     def get_member_list(self, req, **kwargs):
         dic = {}
         for key in data_collection.member_list.keys():
