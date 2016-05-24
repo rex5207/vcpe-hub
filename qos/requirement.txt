@@ -1,0 +1,8 @@
+decorator (4.0.9)
+networkx (1.11)
+numpy (1.11.0)
+pip (8.1.2)
+requests (2.10.0)
+scipy (0.17.1)
+setuptools (21.2.1)
+wheel (0.29.0)
