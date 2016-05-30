@@ -2,10 +2,10 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.ofproto.ether import ETH_TYPE_ARP
 from ryu.lib.packet import arp
-from ryu.ofproto import ether
 
 BROADCAST = 'ff:ff:ff:ff:ff:ff'
 TARGET_MAC_ADDRESS = '00:00:00:00:00:00'
+
 
 def arp_reply(src_mac, src_ip, target_mac, target_ip):
     # Creat an empty Packet instance
@@ -27,6 +27,7 @@ def arp_reply(src_mac, src_ip, target_mac, target_ip):
     # print 'Built up a arp reply packet:', data
     return data
 
+
 def broadcast_arp_request(src_mac, src_ip, target_ip):
     pkt = packet.Packet()
     pkt.add_protocol(ethernet.ethernet(ethertype=ETH_TYPE_ARP,
@@ -42,6 +43,3 @@ def broadcast_arp_request(src_mac, src_ip, target_ip):
     data = pkt.data
     # print 'Built up a broadcast arp request packet:', data
     return data
-
-if __name__ == '__main__':
-    print arp_reply()
