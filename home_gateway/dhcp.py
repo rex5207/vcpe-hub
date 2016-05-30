@@ -7,15 +7,15 @@ from ryu.ofproto import ether
 from ryu.ofproto import inet
 from ryu.ofproto import ofproto_v1_3
 from ryu.base import app_manager
-from ryu.lib.packet import dhcp, udp, ipv4, ethernet
+from ryu.lib.packet import packet, dhcp, udp, ipv4, ethernet
 from ryu.controller.handler import set_ev_cls
-from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
-from ryu.lib.packet import packet
+from ryu.controller import ofp_event
 from ryu.lib import addrconv
 
 # from config import settings
 from models import settings
+from helper import ofp_helper
 
 
 class SimpleDHCPServer(app_manager.RyuApp):
@@ -76,28 +76,13 @@ class SimpleDHCPServer(app_manager.RyuApp):
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
+        ofp_helper.add_flow(datapath, 0, match, actions)
 
         # install DHCP request packets flow entry
         match_dhcp_request = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                              ip_proto=inet.IPPROTO_UDP,
                                              udp_src=68, udp_dst=67)
-        self.add_flow(datapath, 100, match_dhcp_request, actions)
-
-    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        if buffer_id:
-            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                    priority=priority, match=match,
-                                    instructions=inst)
-        else:
-            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    match=match, instructions=inst)
-        datapath.send_msg(mod)
+        ofp_helper.add_flow(datapath, 100, match_dhcp_request, actions)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -201,19 +186,4 @@ class SimpleDHCPServer(app_manager.RyuApp):
         pkt.add_protocol(udp.udp(src_port=67, dst_port=68))
         pkt.add_protocol(dhcp_pkt)
 
-        self._send_packet(datapath, pkt, port)
-
-    def _send_packet(self, datapath, pkt, port):
-
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        pkt.serialize()
-        # self.logger.info("packet-out %s" % (pkt,))
-        data = pkt.data
-        actions = [parser.OFPActionOutput(port=port)]
-        out = parser.OFPPacketOut(datapath=datapath,
-                                  buffer_id=ofproto.OFP_NO_BUFFER,
-                                  in_port=ofproto.OFPP_CONTROLLER,
-                                  actions=actions,
-                                  data=data)
-        datapath.send_msg(out)
+        ofp_helper.send_packet(datapath, pkt, port)

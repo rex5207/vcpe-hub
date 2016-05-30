@@ -10,9 +10,11 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import set_ev_cls
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.ofproto import ofproto_v1_3
+
 import block_data
 from route import urls
 from config import settings
+from helper import ofp_helper
 
 simple_firewall_instance_name = 'simple_firewall_api_app'
 
@@ -28,21 +30,6 @@ class SimpleFirewall(app_manager.RyuApp):
         wsgi.register(SimpleFirewallController,
                       {simple_firewall_instance_name: self})
         self.topology_api_app = self
-
-    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        if buffer_id:
-            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                    priority=priority, match=match,
-                                    instructions=inst)
-        else:
-            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    match=match, instructions=inst)
-        datapath.send_msg(mod)
 
     def del_flow(self, datapath, match):
         ofproto = datapath.ofproto
@@ -83,9 +70,9 @@ class SimpleFirewall(app_manager.RyuApp):
             match = parser.OFPMatch(**match_dict)
             fw_priority = settings.firewall_priority
             if rule_action == 'add':
-                self.add_flow(datapath, fw_priority, match, actions)
+                ofp_helper.add_flow(datapath, fw_priority, match, actions)
             elif rule_action == 'delete':  # 'off'
-                self.del_flow(datapath, match)
+                ofp_helper.del_flow(datapath, match)
 
             self._request_stats(datapath)  # update flow list in data.py
 

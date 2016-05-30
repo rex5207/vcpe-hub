@@ -6,7 +6,7 @@ from webob import Response
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_3, ofproto_v1_4
+from ryu.ofproto import ofproto_v1_3
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 from ryu.lib.packet import packet
@@ -22,6 +22,7 @@ import pprint
 from models import settings
 from pkt_utils import arp_pkt_gen
 from route import urls
+from helper import ofp_helper
 
 IP_TO_MAC_TABLE = {}
 # a.k.a arp table
@@ -68,7 +69,7 @@ class SNAT(app_manager.RyuApp):
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, match=match, actions=actions,
+        ofp_helper.add_flow(datapath, match=match, actions=actions,
                       idle_timeout=0, priority=0)
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
@@ -89,28 +90,6 @@ class SNAT(app_manager.RyuApp):
             print '[*] Available UDP port %d' % udp_port
             self.ports_pool.append(udp_port)
             self.ports_pool.sort()
-
-    def add_flow(self, datapath, priority, match, actions, idle_timeout,
-                 buffer_id=None):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        if buffer_id:
-            mod = parser.OFPFlowMod(datapath=datapath,
-                                    idle_timeout=idle_timeout,
-                                    buffer_id=buffer_id,
-                                    priority=priority,
-                                    match=match,
-                                    instructions=inst)
-        else:
-            mod = parser.OFPFlowMod(datapath=datapath,
-                                    idle_timeout=idle_timeout,
-                                    priority=priority,
-                                    match=match,
-                                    instructions=inst)
-        datapath.send_msg(mod)
 
     def _send_packet_to_port(self, datapath, port, data):
         # if not data:
@@ -289,10 +268,10 @@ class SNAT(app_manager.RyuApp):
         else:
             pass
 
-        self.add_flow(datapath, match=match, actions=actions,
-                      idle_timeout=self.IDLE_TIME, priority=10)
-        self.add_flow(datapath, match=match_back, actions=actions_back,
-                      idle_timeout=self.IDLE_TIME, priority=10)
+        ofp_helper.add_flow(datapath, match=match, actions=actions,
+                            idle_timeout=self.IDLE_TIME, priority=10)
+        ofp_helper.add_flow(datapath, match=match_back, actions=actions_back,
+                            idle_timeout=self.IDLE_TIME, priority=10)
 
         d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
@@ -329,7 +308,6 @@ class SNAT(app_manager.RyuApp):
                     arp_reply_pkt = self._arp_request_handler(pkt_arp)
 
                     self._send_packet_to_port(datapath, in_port, arp_reply_pkt)
-                    # self._send_packet_to_port_with_buffer(datapath, in_port, msg.buffer_id, arp_reply_pkt)
                 elif pkt_arp.opcode == arp.ARP_REPLY:
                     self._arp_reply_handler(pkt_arp)
             else:
