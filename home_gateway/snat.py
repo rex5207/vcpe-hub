@@ -20,9 +20,8 @@ from netaddr import IPNetwork, IPAddress
 import pprint
 
 from models import settings
-from pkt_utils import arp_pkt_gen
 from route import urls
-from helper import ofp_helper
+from helper import ofp_helper, nat_helper
 
 IP_TO_MAC_TABLE = {}
 # a.k.a arp table
@@ -70,7 +69,7 @@ class SNAT(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         ofp_helper.add_flow(datapath, match=match, actions=actions,
-                      idle_timeout=0, priority=0)
+                            idle_timeout=0, priority=0)
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, ev):
@@ -135,18 +134,18 @@ class SNAT(app_manager.RyuApp):
             # Who has 192.168.8.1 ?
             # Tell 192.168.8.20(Host),
             # 192.168.8.1's fake MAC address (eth1)
-            data = arp_pkt_gen.arp_reply(src_mac=self.MAC_ON_LAN,
-                                         src_ip=str(self.nat_private_ip),
-                                         target_mac=pkt_arp.src_mac,
-                                         target_ip=pkt_arp.src_ip)
+            data = nat_helper.arp_reply(src_mac=self.MAC_ON_LAN,
+                                        src_ip=str(self.nat_private_ip),
+                                        target_mac=pkt_arp.src_mac,
+                                        target_ip=pkt_arp.src_ip)
 
         elif pkt_arp.dst_ip == self.nat_public_ip:
             # Who has 140.114.71.176 ?
             # Tell 140.114.71.xxx(Extranet Network host)
-            data = arp_pkt_gen.arp_reply(src_mac=self.MAC_ON_WAN,
-                                         src_ip=self.nat_public_ip,
-                                         target_mac=pkt_arp.src_mac,
-                                         target_ip=pkt_arp.src_ip)
+            data = nat_helper.arp_reply(src_mac=self.MAC_ON_WAN,
+                                        src_ip=self.nat_public_ip,
+                                        target_mac=pkt_arp.src_mac,
+                                        target_ip=pkt_arp.src_ip)
 
         return data
 
@@ -281,7 +280,6 @@ class SNAT(app_manager.RyuApp):
                                   in_port=in_port, actions=actions, data=d)
         datapath.send_msg(out)
 
-
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
@@ -334,9 +332,9 @@ class SNAT(app_manager.RyuApp):
                     return
 
                 # Sending ARP request to Gateway
-                arp_req_pkt = arp_pkt_gen.broadcast_arp_request(src_mac=self.MAC_ON_WAN,
-                                                                src_ip=self.nat_public_ip,
-                                                                target_ip=target_ip)
+                arp_req_pkt = nat_helper.broadcast_arp_request(src_mac=self.MAC_ON_WAN,
+                                                               src_ip=self.nat_public_ip,
+                                                               target_ip=target_ip)
                 self._send_packet_to_port(datapath, self.wan_port, arp_req_pkt)
                 # self._send_packet_to_port_with_buffer(datapath, self.wan_port, msg.buffer_id, arp_req_pkt)
                 if pkt_tcp:
