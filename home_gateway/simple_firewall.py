@@ -11,10 +11,9 @@ from ryu.controller.handler import set_ev_cls
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.ofproto import ofproto_v1_3
 
-import block_data
 from route import urls
-from config import settings
 from helper import ofp_helper
+from models import firewall_settings
 
 simple_firewall_instance_name = 'simple_firewall_api_app'
 
@@ -30,16 +29,6 @@ class SimpleFirewall(app_manager.RyuApp):
         wsgi.register(SimpleFirewallController,
                       {simple_firewall_instance_name: self})
         self.topology_api_app = self
-
-    def del_flow(self, datapath, match):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        mod = parser.OFPFlowMod(datapath=datapath,
-                                command=ofproto.OFPFC_DELETE_STRICT,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY,
-                                match=match)
-        datapath.send_msg(mod)
 
     def add_block_rule(self, rule_action, src_ip, dst_ip, trans_proto, port):
         switch_list = get_switch(self.topology_api_app, None)
@@ -68,13 +57,15 @@ class SimpleFirewall(app_manager.RyuApp):
                 match_dict.update({'ipv4_dst': dst_ip})
 
             match = parser.OFPMatch(**match_dict)
-            fw_priority = settings.firewall_priority
+
+            settings = firewall_settings.load()
+            fw_priority = settings['priority']
             if rule_action == 'add':
                 ofp_helper.add_flow(datapath, fw_priority, match, actions)
             elif rule_action == 'delete':  # 'off'
                 ofp_helper.del_flow(datapath, match)
 
-            self._request_stats(datapath)  # update flow list in data.py
+            self._request_stats(datapath)  # update flow list
 
     def _request_stats(self, datapath):
         self.logger.debug('send stats request: %016x', datapath.id)
@@ -86,7 +77,9 @@ class SimpleFirewall(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
-        block_data.blocking_rule = []
+        settings = firewall_settings.load()
+        settings['blocking_rule'] = []
+
         body = ev.msg.body
         for stat in body:
             flow = {}
@@ -102,7 +95,9 @@ class SimpleFirewall(app_manager.RyuApp):
                 else:
                     flow.update({'tranPort': ''})
                     flow.update({'tranProtocol': ''})
-                block_data.blocking_rule.append(flow)
+                settings['blocking_rule'].append(flow)
+
+        firewall_settings.save(settings)
 
 
 class SimpleFirewallController(ControllerBase):
@@ -204,7 +199,8 @@ class SimpleFirewallController(ControllerBase):
 
     @route('firewall', urls.url_get_acl, methods=['GET'])
     def get_block_list(self, req, **kwargs):
-        flowlist = block_data.blocking_rule
-        dic = {'blocking_rule': flowlist}
+        settings = firewall_settings.load()
+        blocking_rule = settings['blocking_rule']
+        dic = {'blocking_rule': blocking_rule}
         body = json.dumps(dic)
         return Response(status=200, content_type='application/json', body=body)
