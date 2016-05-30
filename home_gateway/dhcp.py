@@ -14,7 +14,7 @@ from ryu.controller import ofp_event
 from ryu.lib import addrconv
 
 # from config import settings
-from models import settings
+from models import nat_settings
 from helper import ofp_helper
 
 
@@ -35,8 +35,7 @@ class SimpleDHCPServer(app_manager.RyuApp):
             8: 'DHCP_INFORM',
         }
 
-        dhcp_settings = settings.load()
-
+        dhcp_settings = nat_settings.load()
         self.dhcp_addr = dhcp_settings['dhcp_gw_addr']
 
         self.gw_addr = dhcp_settings['dhcp_gw_addr']

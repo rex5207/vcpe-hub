@@ -19,7 +19,7 @@ from ryu.lib.packet import arp
 from netaddr import IPNetwork, IPAddress
 import pprint
 
-from models import settings
+from models import nat_settings
 from route import urls
 from helper import ofp_helper, nat_helper
 
@@ -38,26 +38,26 @@ class SNAT(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         wsgi.register(SNATRest, {nat_instance_name: self})
 
-        nat_settings = settings.load()
+        settings = nat_settings.load()
 
-        self.wan_port = nat_settings['wan_port']
+        self.wan_port = settings['wan_port']
 
-        self.gateway = str(nat_settings['default_gateway'])
+        self.gateway = str(settings['default_gateway'])
 
-        self.nat_public_ip = str(nat_settings['nat_public_ip'])
-        self.nat_private_ip = nat_settings['dhcp_gw_addr']
+        self.nat_public_ip = str(settings['nat_public_ip'])
+        self.nat_private_ip = settings['dhcp_gw_addr']
 
-        self.private_subnetwork = nat_settings['ip_network']
+        self.private_subnetwork = settings['ip_network']
 
-        self.MAC_ON_WAN = nat_settings['MAC_ON_WAN']
-        self.MAC_ON_LAN = nat_settings['MAC_ON_LAN']
+        self.MAC_ON_WAN = settings['MAC_ON_WAN']
+        self.MAC_ON_LAN = settings['MAC_ON_LAN']
         self.IDLE_TIME = 100
 
         self.port_counter = -1
         self.ports_pool = range(2000, 65536)
 
         pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(nat_settings)
+        pp.pprint(settings)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -375,11 +375,11 @@ class SNATRest(ControllerBase):
     # @route('nat_setings', urls.url_nat_config, methods=['PUT'])
     # def set_nat_config(self, req, **kwargs):
     #     json_body = json.loads(req.body)
-    #     settings.wan_port = json_body.get('wanPort')
-    #     settings.nat_public_ip = json_body.get('natPublicIp')
-    #     settings.gateway = json_body.get('defaultGateway')
+    #     nat_settings.wan_port = json_body.get('wanPort')
+    #     nat_settings.nat_public_ip = json_body.get('natPublicIp')
+    #     nat_settings.gateway = json_body.get('defaultGateway')
     #     net = json_body.get('natPrivateNetwork') + '/24'
-    #     settings.private_subnetwork = IPNetwork(net)
+    #     nat_settings.private_subnetwork = IPNetwork(net)
     #     return Response(status=200)
 
     @route('nat_settings_init', urls.url_nat_config_init, methods=['POST'])
@@ -401,7 +401,7 @@ class SNATRest(ControllerBase):
         save_dict['MAC_ON_WAN'] = '00:0e:c6:87:a6:fb'
         save_dict['MAC_ON_LAN'] = '00:0e:c6:87:a6:fa'
 
-        if settings.save(save_dict):
+        if nat_settings.save(save_dict):
             pp = pprint.PrettyPrinter(indent=2)
             pp.pprint(save_dict)
             return Response(status=200)
@@ -412,7 +412,7 @@ class SNATRest(ControllerBase):
     def nat_config_save(self, req, **kwargs):
         json_body = json.loads(req.body)
 
-        save_dict = settings.load()
+        save_dict = nat_settings.load()
         if save_dict is None:
             save_dict = {}
 
@@ -431,7 +431,7 @@ class SNATRest(ControllerBase):
         save_dict['MAC_ON_WAN'] = '00:0e:c6:87:a6:fb'
         save_dict['MAC_ON_LAN'] = '00:0e:c6:87:a6:fa'
 
-        if settings.save(save_dict):
+        if nat_settings.save(save_dict):
             pp = pprint.PrettyPrinter(indent=2)
             pp.pprint(save_dict)
             return Response(status=200)
@@ -440,25 +440,25 @@ class SNATRest(ControllerBase):
 
     @route('nat_settings_get', urls.url_nat_config_get, methods=['GET'])
     def nat_config_get(self, req, **kwargs):
-        nat_settings = settings.load()
+        settings = nat_settings.load()
         dic = {}
 
         # local network
-        ip = nat_settings['ip_network'].ip
-        mask = nat_settings['ip_network'].netmask
+        ip = settings['ip_network'].ip
+        mask = settings['ip_network'].netmask
         mask_len = mask.bits().replace('.', '').find('0')
         dic['ip_network'] = str(ip) + '/' + str(mask_len)
 
-        dic['wan_port'] = nat_settings['wan_port']
-        dic['default_gateway'] = str(nat_settings['default_gateway'])
-        dic['nat_public_ip'] = str(nat_settings['nat_public_ip'])
+        dic['wan_port'] = settings['wan_port']
+        dic['default_gateway'] = str(settings['default_gateway'])
+        dic['nat_public_ip'] = str(settings['nat_public_ip'])
 
         body = json.dumps(dic)
         return Response(status=200, content_type='application/json', body=body)
 
     @route('dhcp_settings_get', urls.url_dhcp_config_get, methods=['GET'])
     def dhcp_config_get(self, req, **kwargs):
-        dhcp_settings = settings.load()
+        dhcp_settings = nat_settings.load()
         dic = {}
 
         dic['dhcp_gw_addr'] = str(dhcp_settings['dhcp_gw_addr'])

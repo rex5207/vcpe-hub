@@ -7,7 +7,7 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
-from models import settings
+from models import nat_settings
 from helper import ofp_helper
 
 
@@ -26,8 +26,8 @@ class L2Switch(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
-        nat_settings = settings.load()
-        if in_port == nat_settings['wan_port']:
+        settings = nat_settings.load()
+        if in_port == settings['wan_port']:
             return
 
         pkt = packet.Packet(msg.data)
