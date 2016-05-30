@@ -52,6 +52,20 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
     parser = datapath.ofproto_parser
     inst = []
     if state == 'up':
+        command = ofproto.OFPFC_DELETE
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command, buffer_id=buffer_id,
+                                    priority=priority, match=match,
+                                    idle_timeout=10, instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command,
+                                    match=match, out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPP_ANY,
+                                    idle_timeout=10, instructions=inst)
+        datapath.send_msg(mod)
+
+        command = ofproto.OFPFC_ADD
         # inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
         #         parser.OFPInstructionWriteMetadata(int(meter), 4294967295),
         #         parser.OFPInstructionGotoTable(1)]
@@ -61,26 +75,40 @@ def add_flow_for_ratelimite(datapath, priority, match, actions, meter, state, bu
         else:
             inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions),
                     parser.OFPInstructionMeter(meter)]
+
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command, buffer_id=buffer_id,
+                                    priority=priority, match=match,
+                                    idle_timeout=10, instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command, priority=priority,
+                                    idle_timeout=10, match=match, instructions=inst)
+        datapath.send_msg(mod)
     else:
+        command = ofproto.OFPFC_DELETE
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
 
-    if buffer_id:
-        mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                priority=priority, match=match,
-                                idle_timeout=10, instructions=inst)
-        if state == 'down':
-            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command, buffer_id=buffer_id,
                                     priority=priority, match=match,
-                                    idle_timeout=10, hard_timeout=10,
-                                    instructions=inst)
-    else:
-        mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                idle_timeout=10, match=match, instructions=inst)
-        if state == 'down':
-            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    idle_timeout=10, hard_timeout=10,
-                                    match=match, instructions=inst)
-    datapath.send_msg(mod)
+                                    idle_timeout=10, instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command,
+                                    match=match, out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPP_ANY,
+                                    idle_timeout=10, instructions=inst)
+        datapath.send_msg(mod)
+
+        command = ofproto.OFPFC_ADD
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command, buffer_id=buffer_id,
+                                    priority=10, match=match,
+                                    idle_timeout=10, instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath, command=command, priority=10,
+                                    idle_timeout=10, match=match, instructions=inst)
+        datapath.send_msg(mod)
 
 
 def add_flow_meta(datapath, priority, meta, meter_id, buffer_id=None):

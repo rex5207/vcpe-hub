@@ -15,13 +15,18 @@ def set_ratelimite_for_app(appname, meter_id, group, state, d_or_m):
             if flow_info.app == appname:
                 if flow_info.src_mac in memberlist or flow_info.dst_mac in memberlist:
                     if state == 'up':
-                        if flow_info.limited == 0:
-                            flow_info.limited = 1
-                        flow_to_be_handle.append(flow_info)
+                        if flow_info.limited < 30:
+                            if d_or_m == 'm':
+                                flow_info.limited = 30
+                                flow_to_be_handle.append(flow_info)
+                            elif d_or_m == 'd':
+                                if flow_info.limited < 20:
+                                    flow_info.limited = 20
+                                    flow_to_be_handle.append(flow_info)
                     else:
-                        if flow_info.limited == 1:
+                        if flow_info.limited <= 30:
                             flow_info.limited = 0
-                        flow_to_be_handle.append(flow_info)
+                            flow_to_be_handle.append(flow_info)
 
         for flow in flow_to_be_handle:
             datapath = data_collection.member_list.get(flow.dst_mac).datapath
@@ -67,11 +72,11 @@ def set_ratelimite_for_member(member, meter_id, group, state, d_or_m):
         if flow_info.src_mac == member or flow_info.dst_mac == member:
             if flow_info.src_mac in memberlist or flow_info.dst_mac in memberlist:
                 if state == 'up':
-                    if flow_info.limited == 0:
-                        flow_info.limited = 1
+                    if flow_info.limited < 50:
+                        flow_info.limited = 50
                         flow_to_be_handle.append(flow_info)
                 else:
-                    if flow_info.limited == 1:
+                    if flow_info.limited == 50:
                         flow_info.limited = 0
                         flow_to_be_handle.append(flow_info)
 
@@ -118,11 +123,11 @@ def set_ratelimite_for_port(port, meter_id, group, state, d_or_m):
         if flow_info.ip_proto == int(arr_p[0]):
             if flow_info.src_port == int(arr_p[1]) or flow_info.dst_port == int(arr_p[1]):
                 if state == 'up':
-                    if flow_info.limited == 0:
-                        flow_info.limited = 1
+                    if flow_info.limited < 40:
+                        flow_info.limited = 40
                         flow_to_be_handle.append(flow_info)
                 else:
-                    if flow_info.limited == 1:
+                    if flow_info.limited == 40:
                         flow_info.limited = 0
                         flow_to_be_handle.append(flow_info)
 
