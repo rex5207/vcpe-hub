@@ -1,6 +1,6 @@
 import logging
 
-from config import file_helper
+from helper import file_helper
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 filename = 'config/nat_config.pkl'
@@ -11,4 +11,4 @@ def save(nat_dict):
 
 
 def load():
-    file_helper.load(filename)
+    return file_helper.load(filename)
