@@ -3,7 +3,7 @@ import time
 import itertools
 import requests
 import hashlib
-
+import os
 
 # def update_db_for_group(db_ip, database, collection, data):
 #     client = MongoClient(db_ip, 27017)
@@ -39,7 +39,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
                 m = hashlib.sha256()
                 m.update(flow_info.src_ip + flow_info.dst_ip
                          + str(flow_info.src_port) + str(flow_info.dst_port) + str(flow_info.ip_proto))
-                url = 'http://140.114.71.49:2001/api/v1/flows/' + m.hexdigest()
+                url = 'http://' + os.getenv('SHIPYARD_HOST') + ':2001/api/v1/flows/' + m.hexdigest()
                 response = requests.get(url)
                 str_id = flow_info.src_ip + flow_info.dst_ip + str(flow_info.src_port) + str(flow_info.dst_port) + str(flow_info.ip_proto)
                 flow_info.counter = flow_info.counter + 1
@@ -51,7 +51,7 @@ def update_app_for_flows_by_clouddb(flow_list, dp_ip):
                     m = hashlib.sha256()
                     m.update(flow_info.dst_ip + flow_info.src_ip
                              + str(flow_info.dst_port) + str(flow_info.src_port) + str(flow_info.ip_proto))
-                    url = 'http://140.114.71.49:2001/api/v1/flows/' + m.hexdigest()
+                    url = 'http://' + os.getenv('SHIPYARD_HOST') + ':2001/api/v1/flows/' + m.hexdigest()
                     response = requests.get(url)
                     if response.status_code == 200:
                         json_data = response.json()
