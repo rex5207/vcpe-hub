@@ -178,15 +178,16 @@ class QosSetupRest(ControllerBase):
         flow_list_in_dp = flowutils.get_flow_in_dp(constant.Detect_switch_DPID)
         for key in flow_list_in_dp:
             flow_c = data_collection.flow_list[key]
-            if flow_c.counter < 3 and flow_c.app == 'Others':
-                continue
-            else:
-                list_f = {"src_mac": flow_c.src_mac, "dst_mac": flow_c.dst_mac,
-                          "src_ip": flow_c.src_ip, "dst_ip": flow_c.dst_ip,
-                          "src_port": flow_c.src_port, "dst_port": flow_c.dst_port,
-                          "ip_proto": flow_c.ip_proto, "rate": flow_c.rate, "app": flow_c.app}
 
-                dic.update({key: list_f})
+            # disable counter limitation for getting flows
+
+            list_f = {"src_mac": flow_c.src_mac, "dst_mac": flow_c.dst_mac,
+                      "src_ip": flow_c.src_ip, "dst_ip": flow_c.dst_ip,
+                      "src_port": flow_c.src_port, "dst_port": flow_c.dst_port,
+                      "ip_proto": flow_c.ip_proto, "rate": flow_c.rate, "app": flow_c.app}
+
+            dic.update({key: list_f})
+            
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
