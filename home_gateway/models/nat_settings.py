@@ -3,7 +3,7 @@ import logging
 from helper import file_helper
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
-filename = 'config/nat_config.pkl'
+filename = 'home_gateway/config/nat_config.pkl'
 
 
 def save(nat_dict):
