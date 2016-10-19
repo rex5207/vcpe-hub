@@ -6,7 +6,7 @@ from webob import Response
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_3, ofproto_v1_4
+from ryu.ofproto import ofproto_v1_3
 from ryu.ofproto import ether
 from ryu.ofproto import inet
 from ryu.lib.packet import packet
@@ -19,9 +19,9 @@ from ryu.lib.packet import arp
 from netaddr import IPNetwork, IPAddress
 import pprint
 
-from models import settings
-from pkt_utils import arp_pkt_gen
+from models import nat_settings
 from route import urls
+from helper import ofp_helper, nat_helper
 
 IP_TO_MAC_TABLE = {}
 # a.k.a arp table
@@ -38,26 +38,26 @@ class SNAT(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         wsgi.register(SNATRest, {nat_instance_name: self})
 
-        nat_settings = settings.load()
+        settings = nat_settings.load()
 
-        self.wan_port = nat_settings['wan_port']
+        self.wan_port = settings['wan_port']
 
-        self.gateway = str(nat_settings['default_gateway'])
+        self.gateway = str(settings['default_gateway'])
 
-        self.nat_public_ip = str(nat_settings['nat_public_ip'])
-        self.nat_private_ip = nat_settings['dhcp_gw_addr']
+        self.nat_public_ip = str(settings['nat_public_ip'])
+        self.nat_private_ip = settings['dhcp_gw_addr']
 
-        self.private_subnetwork = nat_settings['ip_network']
+        self.private_subnetwork = settings['ip_network']
 
-        self.MAC_ON_WAN = nat_settings['MAC_ON_WAN']
-        self.MAC_ON_LAN = nat_settings['MAC_ON_LAN']
+        self.MAC_ON_WAN = settings['MAC_ON_WAN']
+        self.MAC_ON_LAN = settings['MAC_ON_LAN']
         self.IDLE_TIME = 100
 
         self.port_counter = -1
         self.ports_pool = range(2000, 65536)
 
         pp = pprint.PrettyPrinter(indent=2)
-        pp.pprint(nat_settings)
+        pp.pprint(settings)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -68,8 +68,8 @@ class SNAT(app_manager.RyuApp):
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, match=match, actions=actions,
-                      idle_timeout=0, priority=0)
+        ofp_helper.add_flow(datapath, match=match, actions=actions,
+                            idle_timeout=0, priority=0)
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, ev):
@@ -90,28 +90,6 @@ class SNAT(app_manager.RyuApp):
             self.ports_pool.append(udp_port)
             self.ports_pool.sort()
 
-    def add_flow(self, datapath, priority, match, actions, idle_timeout,
-                 buffer_id=None):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        if buffer_id:
-            mod = parser.OFPFlowMod(datapath=datapath,
-                                    idle_timeout=idle_timeout,
-                                    buffer_id=buffer_id,
-                                    priority=priority,
-                                    match=match,
-                                    instructions=inst)
-        else:
-            mod = parser.OFPFlowMod(datapath=datapath,
-                                    idle_timeout=idle_timeout,
-                                    priority=priority,
-                                    match=match,
-                                    instructions=inst)
-        datapath.send_msg(mod)
-
     def _send_packet_to_port(self, datapath, port, data):
         # if not data:
         #     return
@@ -121,6 +99,20 @@ class SNAT(app_manager.RyuApp):
         # self.logger.info("packet-out %s" % (data,))
         out = parser.OFPPacketOut(datapath=datapath,
                                   buffer_id=ofproto.OFP_NO_BUFFER,
+                                  in_port=ofproto.OFPP_CONTROLLER,
+                                  actions=actions,
+                                  data=data)
+        datapath.send_msg(out)
+
+    def _send_packet_to_port_with_buffer(self, datapath, port, buffer_id, data):
+        # if not data:
+        #     return
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        actions = [parser.OFPActionOutput(port=port)]
+        # self.logger.info("packet-out %s" % (data,))
+        out = parser.OFPPacketOut(datapath=datapath,
+                                  buffer_id=buffer_id,
                                   in_port=ofproto.OFPP_CONTROLLER,
                                   actions=actions,
                                   data=data)
@@ -142,18 +134,18 @@ class SNAT(app_manager.RyuApp):
             # Who has 192.168.8.1 ?
             # Tell 192.168.8.20(Host),
             # 192.168.8.1's fake MAC address (eth1)
-            data = arp_pkt_gen.arp_reply(src_mac=self.MAC_ON_LAN,
-                                         src_ip=str(self.nat_private_ip),
-                                         target_mac=pkt_arp.src_mac,
-                                         target_ip=pkt_arp.src_ip)
+            data = nat_helper.arp_reply(src_mac=self.MAC_ON_LAN,
+                                        src_ip=str(self.nat_private_ip),
+                                        target_mac=pkt_arp.src_mac,
+                                        target_ip=pkt_arp.src_ip)
 
         elif pkt_arp.dst_ip == self.nat_public_ip:
             # Who has 140.114.71.176 ?
             # Tell 140.114.71.xxx(Extranet Network host)
-            data = arp_pkt_gen.arp_reply(src_mac=self.MAC_ON_WAN,
-                                         src_ip=self.nat_public_ip,
-                                         target_mac=pkt_arp.src_mac,
-                                         target_ip=pkt_arp.src_ip)
+            data = nat_helper.arp_reply(src_mac=self.MAC_ON_WAN,
+                                        src_ip=self.nat_public_ip,
+                                        target_mac=pkt_arp.src_mac,
+                                        target_ip=pkt_arp.src_ip)
 
         return data
 
@@ -275,10 +267,10 @@ class SNAT(app_manager.RyuApp):
         else:
             pass
 
-        self.add_flow(datapath, match=match, actions=actions,
-                      idle_timeout=self.IDLE_TIME, priority=10)
-        self.add_flow(datapath, match=match_back, actions=actions_back,
-                      idle_timeout=self.IDLE_TIME, priority=10)
+        ofp_helper.add_flow(datapath, match=match, actions=actions,
+                            idle_timeout=self.IDLE_TIME, priority=10)
+        ofp_helper.add_flow(datapath, match=match_back, actions=actions_back,
+                            idle_timeout=self.IDLE_TIME, priority=10)
 
         d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
@@ -287,7 +279,6 @@ class SNAT(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=buffer_id,
                                   in_port=in_port, actions=actions, data=d)
         datapath.send_msg(out)
-
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -313,6 +304,7 @@ class SNAT(app_manager.RyuApp):
             if pkt_arp:
                 if pkt_arp.opcode == arp.ARP_REQUEST:
                     arp_reply_pkt = self._arp_request_handler(pkt_arp)
+
                     self._send_packet_to_port(datapath, in_port, arp_reply_pkt)
                 elif pkt_arp.opcode == arp.ARP_REPLY:
                     self._arp_reply_handler(pkt_arp)
@@ -322,7 +314,6 @@ class SNAT(app_manager.RyuApp):
         else:
             # Packets from LAN port
             if pkt_ip:
-
                 if (self._in_private_subnetwork(pkt_ip.dst) and pkt_ip.dst != str(self.private_subnetwork[1])):
                     # print "Private network %s" %pkt_ip.dst
                     # These packets are private network
@@ -341,11 +332,11 @@ class SNAT(app_manager.RyuApp):
                     return
 
                 # Sending ARP request to Gateway
-                arp_req_pkt = arp_pkt_gen.broadcast_arp_request(src_mac=self.MAC_ON_WAN,
-                                                                src_ip=self.nat_public_ip,
-                                                                target_ip=target_ip)
+                arp_req_pkt = nat_helper.broadcast_arp_request(src_mac=self.MAC_ON_WAN,
+                                                               src_ip=self.nat_public_ip,
+                                                               target_ip=target_ip)
                 self._send_packet_to_port(datapath, self.wan_port, arp_req_pkt)
-
+                # self._send_packet_to_port_with_buffer(datapath, self.wan_port, msg.buffer_id, arp_req_pkt)
                 if pkt_tcp:
                     if target_ip in IP_TO_MAC_TABLE:
                         self._private_to_public(datapath=datapath,
@@ -369,6 +360,7 @@ class SNAT(app_manager.RyuApp):
             elif pkt_arp:
                 if pkt_arp.opcode == arp.ARP_REQUEST:
                     arp_reply_pkt = self._arp_request_handler(pkt_arp)
+                    # self._send_packet_to_port_with_buffer(datapath, self.wan_port, msg.buffer_id, arp_reply_pkt)
                     self._send_packet_to_port(datapath, in_port, arp_reply_pkt)
                 elif pkt_arp.opcode == arp.ARP_REPLY:
                     pass
@@ -383,19 +375,19 @@ class SNATRest(ControllerBase):
     # @route('nat_setings', urls.url_nat_config, methods=['PUT'])
     # def set_nat_config(self, req, **kwargs):
     #     json_body = json.loads(req.body)
-    #     settings.wan_port = json_body.get('wanPort')
-    #     settings.nat_public_ip = json_body.get('natPublicIp')
-    #     settings.gateway = json_body.get('defaultGateway')
+    #     nat_settings.wan_port = json_body.get('wanPort')
+    #     nat_settings.nat_public_ip = json_body.get('natPublicIp')
+    #     nat_settings.gateway = json_body.get('defaultGateway')
     #     net = json_body.get('natPrivateNetwork') + '/24'
-    #     settings.private_subnetwork = IPNetwork(net)
+    #     nat_settings.private_subnetwork = IPNetwork(net)
     #     return Response(status=200)
 
-    @route('nat_setings_init', urls.url_nat_config_init, methods=['POST'])
+    @route('nat_settings_init', urls.url_nat_config_init, methods=['POST'])
     def nat_config_init(self, req, **kwargs):
         save_dict = {}
 
         save_dict['wan_port'] = 1
-        save_dict['nat_public_ip'] = IPAddress('140.114.71.177')
+        save_dict['nat_public_ip'] = IPAddress('140.114.71.178')
         save_dict['default_gateway'] = IPAddress('140.114.71.254')
 
         network = '192.168.8.0/24'
@@ -409,18 +401,18 @@ class SNATRest(ControllerBase):
         save_dict['MAC_ON_WAN'] = '00:0e:c6:87:a6:fb'
         save_dict['MAC_ON_LAN'] = '00:0e:c6:87:a6:fa'
 
-        if settings.save(save_dict):
+        if nat_settings.save(save_dict):
             pp = pprint.PrettyPrinter(indent=2)
             pp.pprint(save_dict)
             return Response(status=200)
         else:
             return Response(status=400)
 
-    @route('nat_setings_save', urls.url_nat_config_save, methods=['PUT'])
+    @route('nat_settings_save', urls.url_nat_config_save, methods=['PUT'])
     def nat_config_save(self, req, **kwargs):
         json_body = json.loads(req.body)
 
-        save_dict = settings.load()
+        save_dict = nat_settings.load()
         if save_dict is None:
             save_dict = {}
 
@@ -439,9 +431,40 @@ class SNATRest(ControllerBase):
         save_dict['MAC_ON_WAN'] = '00:0e:c6:87:a6:fb'
         save_dict['MAC_ON_LAN'] = '00:0e:c6:87:a6:fa'
 
-        if settings.save(save_dict):
+        if nat_settings.save(save_dict):
             pp = pprint.PrettyPrinter(indent=2)
             pp.pprint(save_dict)
             return Response(status=200)
         else:
             return Response(status=400)
+
+    @route('nat_settings_get', urls.url_nat_config_get, methods=['GET'])
+    def nat_config_get(self, req, **kwargs):
+        settings = nat_settings.load()
+        dic = {}
+
+        # local network
+        ip = settings['ip_network'].ip
+        mask = settings['ip_network'].netmask
+        mask_len = mask.bits().replace('.', '').find('0')
+        dic['ip_network'] = str(ip) + '/' + str(mask_len)
+
+        dic['wan_port'] = settings['wan_port']
+        dic['default_gateway'] = str(settings['default_gateway'])
+        dic['nat_public_ip'] = str(settings['nat_public_ip'])
+
+        body = json.dumps(dic)
+        return Response(status=200, content_type='application/json', body=body)
+
+    @route('dhcp_settings_get', urls.url_dhcp_config_get, methods=['GET'])
+    def dhcp_config_get(self, req, **kwargs):
+        dhcp_settings = nat_settings.load()
+        dic = {}
+
+        dic['dhcp_gw_addr'] = str(dhcp_settings['dhcp_gw_addr'])
+        dic['broadcast_addr'] = str(dhcp_settings['broadcast_addr'])
+        dic['dns_addr'] = str(dhcp_settings['dns_addr'])
+        dic['dhcp_hw_addr'] = str(dhcp_settings['dhcp_hw_addr'])
+
+        body = json.dumps(dic)
+        return Response(status=200, content_type='application/json', body=body)

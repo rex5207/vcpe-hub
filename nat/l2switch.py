@@ -1,13 +1,14 @@
 from ryu.base import app_manager
 from ryu.controller import ofp_event
-from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
+from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_3, ofproto_v1_4
+from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
-from models import settings
+from models import nat_settings
+from helper import ofp_helper
 
 
 class L2Switch(app_manager.RyuApp):
@@ -17,32 +18,6 @@ class L2Switch(app_manager.RyuApp):
         super(L2Switch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
 
-    # @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    # def switch_features_handler(self, ev):
-    #     datapath = ev.msg.datapath
-    #     ofproto = datapath.ofproto
-    #     parser = datapath.ofproto_parser
-    #
-    #     match = parser.OFPMatch()
-    #     actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-    #                                       ofproto.OFPCML_NO_BUFFER)]
-    #     self.add_flow(datapath, 0, match, actions)
-
-    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        if buffer_id:
-            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                    priority=priority, match=match,
-                                    instructions=inst)
-        else:
-            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    match=match, instructions=inst)
-        datapath.send_msg(mod)
-
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
@@ -51,12 +26,10 @@ class L2Switch(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
-        nat_settings = settings.load()
-
-        if in_port == nat_settings['wan_port']:
-            # self.logger.info("ignore packet coming from WAN port 3")
-            # ignore packet coming from WAN port
+        settings = nat_settings.load()
+        if in_port == settings['wan_port']:
             return
+
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocols(ethernet.ethernet)[0]
 
@@ -70,7 +43,6 @@ class L2Switch(app_manager.RyuApp):
         self.mac_to_port.setdefault(dpid, {})
 
         # self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
-
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
 
@@ -87,10 +59,10 @@ class L2Switch(app_manager.RyuApp):
             # verify if we have a valid buffer_id, if yes avoid to send both
             # flow_mod & packet_out
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
-                self.add_flow(datapath, 1, match, actions, msg.buffer_id)
+                ofp_helper.add_flow(datapath, 1, match, actions, msg.buffer_id)
                 return
             else:
-                self.add_flow(datapath, 1, match, actions)
+                ofp_helper.add_flow(datapath, 1, match, actions)
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data
