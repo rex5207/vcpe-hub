@@ -10,7 +10,7 @@ path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
 def save(nat_dict):
-    file_helper.save(path, nat_dict)
+    return file_helper.save(path, nat_dict)
 
 
 def load():
