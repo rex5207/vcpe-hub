@@ -10,6 +10,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import set_ev_cls
 from ryu.controller.handler import MAIN_DISPATCHER
 from ryu.ofproto import ofproto_v1_3
+import pprint
 
 from route import urls
 from helper import ofp_helper
@@ -196,6 +197,20 @@ class SimpleFirewallController(ControllerBase):
         simple_firewall.add_block_rule(rule_action, src_ip, dst_ip,
                                        protocol, tran_port)
         return Response(status=202)
+
+    @route('firewall', urls.url_fw_config_init, methods=['PUT'])
+    def set_fw_priority(self, req, **kwargs):
+        content = req.body
+        save_dict = {}
+        save_dict['priority'] = 0
+        save_dict['blocking_rule'] = {}
+
+        if firewall_settings.save(save_dict):
+            pp = pprint.PrettyPrinter(indent=2)
+            pp.pprint(save_dict)
+            return Response(status=202)
+        else:
+            return Response(status=400)
 
     @route('firewall', urls.url_get_acl, methods=['GET'])
     def get_block_list(self, req, **kwargs):
