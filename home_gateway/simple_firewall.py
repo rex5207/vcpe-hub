@@ -64,7 +64,7 @@ class SimpleFirewall(app_manager.RyuApp):
             if rule_action == 'add':
                 ofp_helper.add_flow(datapath, fw_priority, match, actions)
             elif rule_action == 'delete':  # 'off'
-                ofp_helper.del_flow(datapath, match)
+                ofp_helper.del_flow(datapath, match, fw_priority)
 
             self._request_stats(datapath)  # update flow list
 

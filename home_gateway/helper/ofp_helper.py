@@ -21,13 +21,14 @@ def add_flow(datapath, priority, match, actions,
     datapath.send_msg(mod)
 
 
-def del_flow(datapath, match):
+def del_flow(datapath, match, priority):
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     mod = parser.OFPFlowMod(datapath=datapath,
                             command=ofproto.OFPFC_DELETE_STRICT,
                             out_port=ofproto.OFPP_ANY,
                             out_group=ofproto.OFPG_ANY,
+                            priority=priority,
                             match=match)
     datapath.send_msg(mod)
 
