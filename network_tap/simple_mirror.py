@@ -25,20 +25,19 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.lib.packet import icmp
+from ryu.topology.api import get_switch
+import ryu.app.ofctl.api
+
+import mirror_data
 
 
-class SimpleSwitch13(app_manager.RyuApp):
+class SimpleMirror(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(SimpleSwitch13, self).__init__(*args, **kwargs)
+        super(SimpleMirror, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
-
-        #protocol port
-        self.mirror_tcp_port = 45
-        self.mirror_udp_port = 46
-        self.mirror_icmp_port = 47
-
+        mirror_data.mirror_table = []
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -54,9 +53,26 @@ class SimpleSwitch13(app_manager.RyuApp):
         # truncated packet data. In that case, we cannot output packets
         # correctly.  The bug has been fixed in OVS v2.1.0.
         match = parser.OFPMatch()
+
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
+
+        msg = ev.msg
+        host_port = msg.match['in_port']
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocols(ethernet.ethernet)[0]
+        dst = eth.dst
+        dpid = datapath.id
+
+        mirror_rule = {}
+        mirror_rule.update({'dst':dst, 'out_port':host_port, 'mirror_port':48})
+        mirror_data.mirror_table.append(mirror_rule)
+        match_mirror = parser.OFPMatch(eth_dst = dst)
+        actions_mirror = [parser.OFPActionOutput(host_port),parser.OFPActionOutput(48)]
+        self.add_flow(datapath, 1, match_mirror, actions_mirror)
+
+    
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
@@ -73,6 +89,7 @@ class SimpleSwitch13(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
 
+
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         # If you hit this you might want to increase
@@ -85,8 +102,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
-        if in_port == 48:
-            return
+
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocols(ethernet.ethernet)[0]
@@ -105,25 +121,13 @@ class SimpleSwitch13(app_manager.RyuApp):
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
 
-
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
         else:
             out_port = ofproto.OFPP_FLOOD
 
 
-        pkt_icmp = pkt.get_protocol(icmp.icmp)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
-        pkt_udp = pkt.get_protocol(udp.udp)
-
-        if pkt_icmp:
-            actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(self.mirror_icmp_port)]
-        elif pkt_tcp:
-            actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(self.mirror_tcp_port)]
-        elif pkt_udp:
-            actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(self.mirror_udp_port)]
-        else
-            actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(48)]
+        actions = [parser.OFPActionOutput(out_port)]
 
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
@@ -142,4 +146,3 @@ class SimpleSwitch13(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   in_port=in_port, actions=actions, data=data)
         datapath.send_msg(out)
-
