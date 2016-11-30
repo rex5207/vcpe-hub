@@ -3,7 +3,7 @@ import json
 
 from ryu.base import app_manager
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
-from ryu.topology.api import get_switch
+from ryu.topology.api import get_switch, get_host
 from webob import Response
 
 from setting.db import data_collection
@@ -170,6 +170,15 @@ class QosSetupRest(ControllerBase):
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
+    #http://localhost:8080/api/topology/host
+    @route('topology_info', urls.url_topology_host, methods=['GET'])
+    def get_hosts(self, req, **kwargs):
+        dpid = None
+        if 'dpid' in kwargs:
+            dpid = dpid_lib.str_to_dpid(kwargs['dpid'])
+        hosts = get_host(self.get_qos_info, dpid)
+        body = json.dumps([host.to_dict() for host in hosts])
+        return Response(content_type='application/json', body=body)
 
     @route('flow_data', urls.url_flow, methods=['GET'])
     def get_flow_data(self, req, **kwargs):

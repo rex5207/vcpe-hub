@@ -24,4 +24,6 @@ url_dynamic_en = '/api/enable_dynamic_qos/{enable}'
 url_dpid_list = '/api/get_dpid_list'
 url_dpid_set = '/api/set_dpid/{dpid}'
 
+url_topology_host = '/api/topology/host'
+
 counter = 0
