@@ -26,7 +26,7 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.lib.packet import icmp
-from ryu.topology.api import get_switch
+from ryu.topology.api import get_switch, get_host, get_link
 from webob import Response
 from ryu.app.wsgi import ControllerBase, WSGIApplication, route
 from ryu.ofproto import ether
@@ -64,12 +64,7 @@ class SimpleMirror(app_manager.RyuApp):
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
 
-        # mirror_rule = {}
-        # mirror_rule.update({'dst':dst, 'out_port':host_port, 'mirror_port':48 , 'protocol': 'None'})
-        # mirror_data.mirror_table.append(mirror_rule)
-        # match_mirror = parser.OFPMatch(eth_dst = dst)
-        # actions_mirror = [parser.OFPActionOutput(host_port),parser.OFPActionOutput(48)] #default mirror to 48 port
-        # self.add_flow(datapath, 1, match_mirror, actions_mirror) #default mirror priority values 1
+
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
@@ -96,30 +91,29 @@ class SimpleMirror(app_manager.RyuApp):
                                 match=match)
         datapath.send_msg(mod)
 
-    def add_mirror_rule(self, rule_action, mirror_port, trans_proto):
+    def add_mirror_rule(self, rule_action, mirror_port, trans_proto, host_port):
         switch_list = get_switch(self.topology_api_app, None)
         for switch in switch_list:
             datapath = switch.dp
             parser = datapath.ofproto_parser
 
             match = parser.OFPMatch(ip_proto = trans_proto,eth_type = ether.ETH_TYPE_IP)
-
-            actions = [parser.OFPActionOutput(mirror_port)]
+            actions = [parser.OFPActionOutput(host_port, mirror_port)]
 
             if rule_action == 'add':
                 #add mirror flow by protocol
-                # mirror_rule = {}
-                # mirror_rule.update({
-                #     'dst': None, 'out_port': None, 'mirror_port':mirror_port , 'protocol': trans_proto})
-                # mirror_data.mirror_table.append(mirror_rule)
-                self.add_flow(datapath, 100, match, actions) #protocol mirror get higher priority
+                mirror_rule = {}
+                mirror_rule.update({
+                    'dst': 'None', 'out_port': host_port, 'mirror_port':mirror_port , 'protocol': trans_proto})
+                mirror_data.mirror_table.append(mirror_rule)
+                # self.add_flow(datapath, 100, match, actions) #protocol mirror get higher priority
             elif rule_action == 'delete':
-                # for data in mirror_data.mirror_table:
-                #     if data['protocol'] == trans_proto:
-                #         mirror_data.mirror_table.remove(data) #delete mirror rule from mirror table
+                for data in mirror_data.mirror_table:
+                    if data['protocol'] == trans_proto:
+                        mirror_data.mirror_table.remove(data) #delete mirror rule from mirror table
                 self.del_flow(datapath, match)
 
-            #self._request_stats(datapath)  # update flow list in data.py
+            self._request_stats(datapath)  # update flow list in data.py
             #self.send_set_config(datapath) # Set switch config request message
 
     def _request_stats(self, datapath):
@@ -144,8 +138,9 @@ class SimpleMirror(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
+        default_mirror_port = 48
 
-        if in_port == 48:
+        if in_port == default_mirror_port:
             return
 
         pkt = packet.Packet(msg.data)
@@ -160,17 +155,38 @@ class SimpleMirror(app_manager.RyuApp):
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
 
+        #add the src to table
+        flag = False #avoid add rule again (src)
+        for data in mirror_data.mirror_table:
+            if src in data['dst']:
+                flag = True
+                break
+        if flag == False:
+            mirror_rule = {}
+            mirror_rule.update({'dst':src, 'out_port':in_port, 'mirror_port':default_mirror_port , 'protocol': 'None'})
+            mirror_data.mirror_table.append(mirror_rule)
+            match_src = parser.OFPMatch(eth_dst=src)
+            for data in mirror_data.mirror_table:
+                if src in data['dst']:
+                    actions_src = [parser.OFPActionOutput(data['out_port']), parser.OFPActionOutput(data['mirror_port'])]
+                    self.add_flow(datapath, 1, match_src, actions_src)
+                    break
+
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
-            mirror_port = 48
-            actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(mirror_port)]
+            #add the dst to table
+            mirror_rule = {}
+            mirror_rule.update({'dst':dst, 'out_port':out_port, 'mirror_port':default_mirror_port , 'protocol': 'None'})
+            mirror_data.mirror_table.append(mirror_rule)
+            actions = [parser.OFPActionOutput(out_port, default_mirror_port)]
+
         else:
             out_port = ofproto.OFPP_FLOOD
             actions = [parser.OFPActionOutput(out_port)]
 
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
-            match = parser.OFPMatch(in_port=in_port, eth_dst=dst)
+            match = parser.OFPMatch(eth_dst=dst) #just use dst to set flow
             self.add_flow(datapath, 1, match, actions)
 
         data = None
@@ -196,6 +212,7 @@ class MirrorControlController(ControllerBase):
         rule_action = str(json_data.get('ruleAction'))
         mirror_port = int(json_data.get('mirrorPort'))
         tran_protocol = str(json_data.get('tranProtocol'))
+        host_port = int(json_data.get('hostPort'))
 
         if tran_protocol == 'TCP':
             protocol = inet.IPPROTO_TCP
@@ -203,4 +220,4 @@ class MirrorControlController(ControllerBase):
             protocol = inet.IPPROTO_UDP
         elif tran_protocol == 'ICMP':
             protocol = inet.IPPROTO_ICMP
-        simple_mirror.add_mirror_rule(rule_action, mirror_port, protocol)
+        simple_mirror.add_mirror_rule(rule_action, mirror_port, protocol, host_port)
