@@ -220,3 +220,9 @@ class MirrorControlController(ControllerBase):
         host_port = int(json_data.get('hostPort'))
 
         simple_mirror.add_mirror_rule(rule_action, mirror_port, host_port)
+
+    @route('network_tap', urls.url_get_mirror_list, methods=['GET'])
+    def get_mirror_list(self, req, **kwargs):
+        dic = {'Mirror_rule': mirror_data.mirror_table}
+        body = json.dumps(dic)
+        return Response(status=200, content_type='application/json', body=body)
