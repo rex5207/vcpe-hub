@@ -170,7 +170,7 @@ class SimpleMirror(app_manager.RyuApp):
             if src in data['dst']:
                 flag = True
                 break
-        if flag == False:
+        if flag == False and mirror_data.default_DataPlane_port != in_port:
             mirror_rule = {}
             mirror_rule.update({'dst':src, 'out_port':in_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
             mirror_data.mirror_table.append(mirror_rule)
@@ -181,9 +181,10 @@ class SimpleMirror(app_manager.RyuApp):
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
             #add the dst to table
-            mirror_rule = {}
-            mirror_rule.update({'dst':dst, 'out_port':out_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
-            mirror_data.mirror_table.append(mirror_rule)
+            if out_port != mirror_data.default_DataPlane_port:
+                mirror_rule = {}
+                mirror_rule.update({'dst':dst, 'out_port':out_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
+                mirror_data.mirror_table.append(mirror_rule)
             actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(mirror_data.default_mirror_port)]
 
         else:
