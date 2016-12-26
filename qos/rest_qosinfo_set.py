@@ -136,9 +136,9 @@ class QosSetupRest(ControllerBase):
         self.get_qos_info.set_switch_G(dpid)
         return Response(content_type='application/json',
                             body=str('Success'))
-     #http://localhost:8080/api/topology/host
-     @route('topology_info', urls.url_topology_host, methods=['GET'])
-     def get_hosts(self, req, **kwargs):
+    #http://localhost:8080/api/topology/host
+    @route('topology_info', urls.url_topology_host, methods=['GET'])
+    def get_hosts(self, req, **kwargs):
         dpid = None
         if 'dpid' in kwargs:
             dpid = dpid_lib.str_to_dpid(kwargs['dpid'])
