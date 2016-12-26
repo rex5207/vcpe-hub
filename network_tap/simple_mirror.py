@@ -51,6 +51,7 @@ class SimpleMirror(app_manager.RyuApp):
         wsgi.register(MirrorControlController,
                       {simple_mirror_instance_name: self})
         self.topology_api_app = self
+        self.IDLE_TIME = 100
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -62,11 +63,11 @@ class SimpleMirror(app_manager.RyuApp):
 
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
+        self.add_flow(datapath, 0, match, actions, idle_timeout = 0)
 
 
 
-    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+    def add_flow(self, datapath, priority, match, actions, idle_timeout=0, buffer_id=None):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -75,10 +76,11 @@ class SimpleMirror(app_manager.RyuApp):
         if buffer_id:
             mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                     priority=priority, match=match,
-                                    instructions=inst)
+                                    instructions=inst, idle_timeout=idle_timeout)
         else:
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    match=match, instructions=inst)
+                                    match=match, instructions=inst,
+                                    idle_timeout=idle_timeout)
         datapath.send_msg(mod)
 
     def del_flow(self, datapath, match, priority):
@@ -108,8 +110,7 @@ class SimpleMirror(app_manager.RyuApp):
                         mirror_data.mirror_table[i]['priority'] = 100
                         match_add = parser.OFPMatch(eth_dst=mirror_data.mirror_table[i]['dst'])
                         actions = [parser.OFPActionOutput(mirror_data.mirror_table[i]['out_port']), parser.OFPActionOutput(mirror_data.mirror_table[i]['mirror_port'])]
-                        self.add_flow(datapath, mirror_data.mirror_table[i]['priority'], match_add, actions) #refresh mirror get higher priority
-                print mirror_data.mirror_table
+                        self.add_flow(datapath, mirror_data.mirror_table[i]['priority'], match_add, actions, idle_timeout = 0) #refresh mirror get higher priority
 
             elif rule_action == 'delete':
                 for i in range(len(mirror_data.mirror_table)):
@@ -120,7 +121,7 @@ class SimpleMirror(app_manager.RyuApp):
                         mirror_data.mirror_table[i]['priority'] = 1
                         match_add = parser.OFPMatch(eth_dst=mirror_data.mirror_table[i]['dst'])
                         actions = [parser.OFPActionOutput(mirror_data.mirror_table[i]['out_port']), parser.OFPActionOutput(mirror_data.mirror_table[i]['mirror_port'])]
-                        self.add_flow(datapath, mirror_data.mirror_table[i]['priority'], match_add, actions) #refresh mirror get higher priority
+                        self.add_flow(datapath, mirror_data.mirror_table[i]['priority'], match_add, actions, idle_timeout = 0) #refresh mirror get higher priority
 
             self._request_stats(datapath)  # update flow list in data.py
             #self.send_set_config(datapath) # Set switch config request message
@@ -171,19 +172,25 @@ class SimpleMirror(app_manager.RyuApp):
                 flag = True
                 break
         if flag == False:
-            mirror_rule = {}
-            mirror_rule.update({'dst':src, 'out_port':in_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
-            mirror_data.mirror_table.append(mirror_rule)
-            match_src = parser.OFPMatch(eth_dst=src)
-            actions_src = [parser.OFPActionOutput(in_port), parser.OFPActionOutput(mirror_data.default_mirror_port)]
-            self.add_flow(datapath, 1, match_src, actions_src)
+            if in_port != mirror_data.default_DataPlane_port:
+                mirror_rule = {}
+                mirror_rule.update({'dst':src, 'out_port':in_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
+                mirror_data.mirror_table.append(mirror_rule)
+                match_src = parser.OFPMatch(eth_dst=src)
+                actions_src = [parser.OFPActionOutput(in_port), parser.OFPActionOutput(mirror_data.default_mirror_port)]
+                self.add_flow(datapath, 1, match_src, actions_src, idle_timeout = 0)
+            else: # data out port -> add flow but don't add the mirror data
+                match_src = parser.OFPMatch(eth_dst=src)
+                actions_src = [parser.OFPActionOutput(in_port), parser.OFPActionOutput(mirror_data.default_mirror_port)]
+                self.add_flow(datapath, 1, match_src, actions_src, idle_timeout = self.IDLE_TIME)
 
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
             #add the dst to table
-            mirror_rule = {}
-            mirror_rule.update({'dst':dst, 'out_port':out_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
-            mirror_data.mirror_table.append(mirror_rule)
+            if out_port != mirror_data.default_DataPlane_port:
+                mirror_rule = {}
+                mirror_rule.update({'dst':dst, 'out_port':out_port, 'mirror_port':mirror_data.default_mirror_port, 'priority': 1})
+                mirror_data.mirror_table.append(mirror_rule)
             actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(mirror_data.default_mirror_port)]
 
         else:
@@ -193,7 +200,7 @@ class SimpleMirror(app_manager.RyuApp):
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(eth_dst=dst) #just use dst to set flow
-            self.add_flow(datapath, 1, match, actions)
+            self.add_flow(datapath, 1, match, actions, idle_timeout = 0)
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
