@@ -142,6 +142,6 @@ class QosSetupRest(ControllerBase):
         dpid = None
         if 'dpid' in kwargs:
             dpid = dpid_lib.str_to_dpid(kwargs['dpid'])
-            hosts = get_host(self.get_qos_info, dpid)
-            body = json.dumps([host.to_dict() for host in hosts])
-            return Response(content_type='application/json', body=body)
+        hosts = get_host(self.get_qos_info, dpid)
+        body = json.dumps([host.to_dict() for host in hosts])
+        return Response(content_type='application/json', body=body)
