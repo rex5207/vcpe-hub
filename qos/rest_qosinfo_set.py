@@ -96,6 +96,7 @@ class QosSetupRest(ControllerBase):
             if app in app_list:
                 m = data_collection.member_list.get(member_data.id)
                 member = {}
+                member.update({'Hostname': member_data.hostname})
                 member.update({'mac': member_data.id})
                 member.update({'ip': m.ip})
                 members.append(member)
