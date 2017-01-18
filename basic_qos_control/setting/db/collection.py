@@ -9,6 +9,7 @@ class Member:
     def __init__(self, name, group):
         """Initial Setting methid."""
         self.name = name
+        self.hostname = None
         self.group_id = group
         self.datapath = None
         self.port = None
