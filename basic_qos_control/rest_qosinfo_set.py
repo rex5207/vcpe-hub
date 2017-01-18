@@ -162,6 +162,7 @@ class QosSetupRest(ControllerBase):
         for key in data_collection.member_list.keys():
             member_info = {}
             member_data = data_collection.member_list[key]
+            member_info.update({'Hostname': member_data.hostname})
             member_info.update({'IP': member_data.ip})
             member_info.update({'MAC': key})
             member_info.update({'Group': member_data.group_id})
@@ -196,7 +197,6 @@ class QosSetupRest(ControllerBase):
                       "ip_proto": flow_c.ip_proto, "rate": flow_c.rate, "app": flow_c.app}
 
             dic.update({key: list_f})
-            
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 

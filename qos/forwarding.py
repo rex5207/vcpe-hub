@@ -11,6 +11,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
+from ryu.lib.packet import dhcp
 from ryu.topology.api import get_switch
 from ryu.lib.packet import arp
 from ryu.lib.packet import lldp
@@ -47,14 +48,34 @@ class forwarding(app_manager.RyuApp):
 
         datapath = msg.datapath
         in_port = msg.match['in_port']
+        parser = datapath.ofproto_parser
 
         pkt = packet.Packet(msg.data)
         pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
         pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
         pkt_arp = pkt.get_protocol(arp.arp)
         pkt_lldp = pkt.get_protocol(lldp.lldp)
+        pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
         # print pkt_eth.src, pkt_eth.dst
-        if pkt_arp:
+        if pkt_dhcp:
+            for options in pkt_dhcp.options.option_list:
+                if(options.tag == 12):
+                    if data_collection.member_list.get(pkt_dhcp.chaddr) is not None:
+                        member = data_collection.member_list.get(pkt_dhcp.chaddr)
+                    else:
+                        member = collection.Member(pkt_dhcp.chaddr, "whole")
+                        member.datapath = datapath
+                        member.port = in_port
+                    member.hostname = options.value
+                    data_collection.member_list.update({pkt_dhcp.chaddr: member})
+            data = None
+            if msg.buffer_id == datapath.ofproto.OFP_NO_BUFFER:
+                data = msg.data
+            actions = [parser.OFPActionOutput(datapath.ofproto.OFPP_NORMAL, 0)]
+            out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
+                                  in_port=in_port, actions=actions, data=data)
+            datapath.send_msg(out)
+        elif pkt_arp:
             # print 'arp'
             self._handle_arp(msg, datapath, in_port, pkt_eth, pkt_arp)
 
