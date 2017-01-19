@@ -79,7 +79,7 @@ class member_register_rest(ControllerBase):
         for key in data_collection.member_list.keys():
             member_info = {}
             member_data = data_collection.member_list[key]
-            member.update({'Hostname': member_data.hostname})
+            member_info.update({'Hostname': member_data.hostname})
             member_info.update({'IP': member_data.ip})
             member_info.update({'MAC': key})
             member_info.update({'Group': member_data.group_id})
