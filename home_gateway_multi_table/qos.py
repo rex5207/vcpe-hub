@@ -73,7 +73,7 @@ class QosControl(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPMeterConfigStatsReply, MAIN_DISPATCHER)
     def _meter_config_stats_reply_handler(self, ev):
-        qos_config.meter = {'drop': -1}
+        qos_config.meter = {'drop': -1 , 'unlimit': 0}
         body = ev.msg.body
         for stat in body:
             rate = str(stat.bands[0].rate)
