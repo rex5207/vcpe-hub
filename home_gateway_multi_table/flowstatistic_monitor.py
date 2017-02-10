@@ -14,6 +14,7 @@ from models import flow
 import requests
 import hashlib
 
+
 class flowstatistic_monitor(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
@@ -28,14 +29,17 @@ class flowstatistic_monitor(app_manager.RyuApp):
             self.update_app_for_flows(forwarding_config.flow_list)
             hub.sleep(1)
 
-    def update_app_for_flows(self,flow_list):
+    def update_app_for_flows(self, flow_list):
         for key in flow_list.keys():
             flow_info = flow_list.get(key)
             if flow_info is not None and flow_info.app == 'Others' and flow_info.src_ip is not None:
                 json_data = None
                 m = hashlib.sha256()
-                m.update(flow_info.src_ip + flow_info.dst_ip
-                         + str(flow_info.src_port) + str(flow_info.dst_port) + str(flow_info.ip_proto))
+                m.update(flow_info.src_ip
+                         + flow_info.dst_ip
+                         + str(flow_info.src_port)
+                         + str(flow_info.dst_port)
+                         + str(flow_info.ip_proto))
                 url = 'http://192.168.2.47:12001/api/v1/flows/' + m.hexdigest()
                 response = requests.get(url)
                 flow_info.counter = flow_info.counter + 1
@@ -43,8 +47,11 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     json_data = response.json()
                 else:
                     m = hashlib.sha256()
-                    m.update(flow_info.dst_ip + flow_info.src_ip
-                             + str(flow_info.dst_port) + str(flow_info.src_port) + str(flow_info.ip_proto))
+                    m.update(flow_info.dst_ip
+                             + flow_info.src_ip
+                             + str(flow_info.dst_port)
+                             + str(flow_info.src_port)
+                             + str(flow_info.ip_proto))
                     url = 'http://192.168.2.47:12001/api/v1/flows/' + m.hexdigest()
                     response = requests.get(url)
                     if response.status_code == 200:
@@ -72,14 +79,14 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     # print key_tuples
                     if forwarding_config.flow_list.get(key_tuples) is None:
                         flow_value = flow.Flow(ev.msg.datapath.id,
-                                                     stat.match.get('eth_src'),
-                                                     stat.match.get('eth_dst'),
-                                                     stat.match.get('ipv4_src'),
-                                                     stat.match.get('ipv4_dst'),
-                                                     stat.match.get('ip_proto'),
-                                                     stat.match.get('tcp_src'),
-                                                     stat.match.get('tcp_dst'),
-                                                     stat.byte_count, 1)
+                                               stat.match.get('eth_src'),
+                                               stat.match.get('eth_dst'),
+                                               stat.match.get('ipv4_src'),
+                                               stat.match.get('ipv4_dst'),
+                                               stat.match.get('ip_proto'),
+                                               stat.match.get('tcp_src'),
+                                               stat.match.get('tcp_dst'),
+                                               stat.byte_count, 1)
                         forwarding_config.flow_list.update({key_tuples: flow_value})
                     else:
                         flow_value = forwarding_config.flow_list.get(key_tuples)
@@ -98,14 +105,14 @@ class flowstatistic_monitor(app_manager.RyuApp):
                                       + str(stat.match.get('udp_dst'))
                     if forwarding_config.flow_list.get(key_tuples) is None:
                         flow_value = flow.Flow(ev.msg.datapath.id,
-                                                     stat.match.get('eth_src'),
-                                                     stat.match.get('eth_dst'),
-                                                     stat.match.get('ipv4_src'),
-                                                     stat.match.get('ipv4_dst'),
-                                                     stat.match.get('ip_proto'),
-                                                     stat.match.get('udp_src'),
-                                                     stat.match.get('udp_dst'),
-                                                     stat.byte_count, 1)
+                                               stat.match.get('eth_src'),
+                                               stat.match.get('eth_dst'),
+                                               stat.match.get('ipv4_src'),
+                                               stat.match.get('ipv4_dst'),
+                                               stat.match.get('ip_proto'),
+                                               stat.match.get('udp_src'),
+                                               stat.match.get('udp_dst'),
+                                               stat.byte_count, 1)
                         forwarding_config.flow_list.update({key_tuples: flow_value})
                     else:
                         flow_value = forwarding_config.flow_list.get(key_tuples)
