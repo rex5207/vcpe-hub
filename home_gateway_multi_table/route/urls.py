@@ -32,3 +32,5 @@ get_qos_rate_limit_member = '/qos/rate-limit/member'
 put_qos_rate_limit_member = '/qos/rate-limit/member'
 get_qos_rate_limit_app = '/qos/rate-limit/application'
 put_qos_rate_limit_app = '/qos/rate-limit/application'
+# flow
+get_flow_info = '/qos/flow/get_flow_info'
