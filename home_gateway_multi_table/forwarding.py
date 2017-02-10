@@ -80,7 +80,7 @@ class L2Switch(app_manager.RyuApp):
                     else:
                         forwarding_config.member_list.setdefault(pkt_dhcp.chaddr,
                                                                  Member(pkt_dhcp.chaddr))
-                        forwarding_config.member_list[pkt_dhcp.chaddr].datapath = dpid
+                        forwarding_config.member_list[pkt_dhcp.chaddr].datapath = datapath
                         forwarding_config.member_list[pkt_dhcp.chaddr].port = in_port
                     forwarding_config.member_list[pkt_dhcp.chaddr].hostname = options.value
             if service_config.service_status['dhcp']:
@@ -109,7 +109,7 @@ class L2Switch(app_manager.RyuApp):
         # update member(host) in member_list
         member_list = forwarding_config.member_list
         member_list.setdefault(eth_src, Member(eth_src))
-        member_list[eth_src].datapath = dpid
+        member_list[eth_src].datapath = datapath
         member_list[eth_src].port = in_port
 
         if eth_dst not in member_list:

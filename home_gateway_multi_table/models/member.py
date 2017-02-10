@@ -6,3 +6,4 @@ class Member:
         self.ip = None
         self.hostname = None
         self.datapath = None
+        self.meter_id = None

@@ -51,28 +51,18 @@ class QosControl(app_manager.RyuApp):
 
     def rate_limit_for_member(self, mac, bandwidth):
         meter_id = qos_config.meter[str(bandwidth)]
-
-        switch_list = get_switch(self.topology_api_app, None)
-        for switch in switch_list:
-            datapath = switch.dp
-            ofproto = datapath.ofproto
-            parser = datapath.ofproto_parser
-            match = parser.OFPMatch(eth_src=mac,
-                                    eth_type=ether.ETH_TYPE_IP)
-            match_back = parser.OFPMatch(eth_dst=mac,
-                                         eth_type=ether.ETH_TYPE_IP)
-            ofp_helper.add_flow_rate_limit(datapath=datapath,
-                                           table_id=self.table_id,
-                                           priority=self.member_limit_priority,
-                                           match=match,
-                                           meter_id=meter_id,
-                                           idle_timeout=10)
-            ofp_helper.add_flow_rate_limit(datapath=datapath,
-                                           table_id=self.table_id,
-                                           priority=self.member_limit_priority,
-                                           match=match_back,
-                                           meter_id=meter_id,
-                                           idle_timeout=10)
+        forwarding_config.member_list.get(mac).meter_id = meter_id
+        datapath = forwarding_config.member_list.get(mac).datapath
+        out_port = forwarding_config.member_list.get(mac).port
+        parser = datapath.ofproto_parser
+        actions = [parser.OFPActionOutput(out_port)]
+        match = parser.OFPMatch(eth_src=mac)
+        ofp_helper.add_flow_rate_limit(datapath=datapath,
+                                       table_id=self.table_id,
+                                       priority=self.member_limit_priority,
+                                       match=match,
+                                       meter_id=meter_id,
+                                       idle_timeout=10)
 
     # meter
     def _request_meter_config_stats(self, datapath):
@@ -154,16 +144,33 @@ class QosControlController(ControllerBase):
 
     @route('flow_data', urls.get_flow_info, methods=['GET'])
     def get_flow_data(self, req, **kwargs):
-        dic = {}
-        flow_list_key = forwarding_config.flow_list.keys()
-        for key in flow_list_key:
-            # if key.startswith(1):
-            flow_c = forwarding_config.flow_list[key]
-            list_f = {"src_mac": flow_c.src_mac, "dst_mac": flow_c.dst_mac,
-                      "src_ip": flow_c.src_ip, "dst_ip": flow_c.dst_ip,
-                      "src_port": flow_c.src_port, "dst_port": flow_c.dst_port,
-                      "ip_proto": flow_c.ip_proto, "rate": flow_c.rate, "app": flow_c.app}
-            dic.update({key: list_f})
-        # print forwarding_config.flow_list
+        dic = []
+        for key,value in forwarding_config.flow_list.iteritems():
+            flow = {"src_mac": value.src_mac, "dst_mac": value.dst_mac,
+                      "src_ip": value.src_ip, "dst_ip": value.dst_ip,
+                      "src_port": value.src_port, "dst_port": value.dst_port,
+                      "ip_proto": value.ip_proto, "rate": value.rate, "app": value.app}
+            dic.append({key: flow})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
+
+    @route('member_data', urls.get_member_info, methods=['GET'])
+    def get_member_data(self, req, **kwargs):
+        dic = []
+        for key,value in forwarding_config.member_list.iteritems():
+            member = {"hostname": value.hostname, "ip": value.ip,
+                      "mac": value.mac, "datapath": value.datapath.id,
+                      "port": value.port, "meter_id": value.meter_id}
+            dic.append({key: member})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
+
+    @route('ratelimit_for_member', urls.put_qos_rate_limit_member, methods=['PUT'])
+    def set_flow_for_ratelimite_for_member(self, req, **kwargs):
+        qos_control = self.qos_control_spp
+
+        mac = str(kwargs['mac'])
+        json_data = json.loads(req.body)
+        bandwidth = str(json_data.get('bandwidth'))
+        qos_control.rate_limit_for_member(mac,bandwidth)
+        return Response(status=202)
