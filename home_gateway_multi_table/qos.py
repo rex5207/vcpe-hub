@@ -1,4 +1,5 @@
 import json
+import time, datetime
 from webob import Response
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -15,7 +16,6 @@ from ryu.lib.packet import ether_types
 from route import urls
 from helper import ofp_helper
 from config import forwarding_config, qos_config, service_config
-
 qos_instance_name = 'qos_api_app'
 
 
@@ -150,4 +150,20 @@ class QosControlController(ControllerBase):
         qos_control = self.qos_control_spp
         hosts = get_host(qos_control, None)
         body = json.dumps([host.to_dict() for host in hosts])
+        return Response(content_type='application/json', body=body)
+
+    @route('flow_data', urls.get_flow_info, methods=['GET'])
+    def get_flow_data(self, req, **kwargs):
+        dic = {}
+        flow_list_key = forwarding_config.flow_list.keys()
+        for key in flow_list_key:
+            # if key.startswith(1):
+            flow_c = forwarding_config.flow_list[key]
+            list_f = {"src_mac": flow_c.src_mac, "dst_mac": flow_c.dst_mac,
+                      "src_ip": flow_c.src_ip, "dst_ip": flow_c.dst_ip,
+                      "src_port": flow_c.src_port, "dst_port": flow_c.dst_port,
+                      "ip_proto": flow_c.ip_proto, "rate": flow_c.rate, "app": flow_c.app}
+            dic.update({key: list_f})
+        # print forwarding_config.flow_list
+        body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
