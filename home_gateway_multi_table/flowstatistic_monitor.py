@@ -11,6 +11,7 @@ from ryu.app.ofctl.api import get_datapath
 
 from config import forwarding_config
 from models import flow
+from route import urls
 
 import requests
 import hashlib
@@ -108,7 +109,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                          + str(flow_info.src_port)
                          + str(flow_info.dst_port)
                          + str(flow_info.ip_proto))
-                url = 'http://192.168.2.47:12001/api/v1/flows/' + m.hexdigest()
+                url = urls.get_flowstatistic_info + m.hexdigest()
                 response = requests.get(url)
                 flow_info.counter = flow_info.counter + 1
                 if response.status_code == 200:
@@ -120,7 +121,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                              + str(flow_info.dst_port)
                              + str(flow_info.src_port)
                              + str(flow_info.ip_proto))
-                    url = 'http://192.168.2.47:12001/api/v1/flows/' + m.hexdigest()
+                    url = urls.get_flowstatistic_info + m.hexdigest()
                     response = requests.get(url)
                     if response.status_code == 200:
                         json_data = response.json()

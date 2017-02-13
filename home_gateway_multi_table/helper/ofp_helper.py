@@ -97,7 +97,6 @@ def add_flow_rate_limit(datapath, table_id, priority, match, meter_id,
         actions = []  # drop
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
     elif meter_id == 0:
-        print "unlimit"
         inst = [parser.OFPInstructionGotoTable(next_table)]
     else:
         inst = [parser.OFPInstructionMeter(meter_id),
