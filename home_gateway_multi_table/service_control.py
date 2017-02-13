@@ -73,7 +73,7 @@ class ServiceControl(app_manager.RyuApp):
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        ofp_helper.add_flow(datapath, table_id=service_sequence['nat_egress'],
+        ofp_helper.add_flow(datapath, table_id=service_config.service_sequence['nat_egress'],
                             priority=self.packet_in_priority, match=match,
                             actions=actions, idle_timeout=0)
 
