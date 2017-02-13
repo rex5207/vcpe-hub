@@ -9,9 +9,8 @@ from ryu.ofproto import ether
 from ryu.ofproto import inet
 from ryu.app.ofctl.api import get_datapath
 
-from config import forwarding_config
+from config import forwarding_config,qos_config
 from models import flow
-from route import urls
 
 import requests
 import hashlib
@@ -109,7 +108,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                          + str(flow_info.src_port)
                          + str(flow_info.dst_port)
                          + str(flow_info.ip_proto))
-                url = urls.get_flowstatistic_info + m.hexdigest()
+                url = qos_config.get_flowstatistic_info + m.hexdigest()
                 response = requests.get(url)
                 flow_info.counter = flow_info.counter + 1
                 if response.status_code == 200:
@@ -121,7 +120,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                              + str(flow_info.dst_port)
                              + str(flow_info.src_port)
                              + str(flow_info.ip_proto))
-                    url = urls.get_flowstatistic_info + m.hexdigest()
+                    url = qos_config.get_flowstatistic_info + m.hexdigest()
                     response = requests.get(url)
                     if response.status_code == 200:
                         json_data = response.json()
