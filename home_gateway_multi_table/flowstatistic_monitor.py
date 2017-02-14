@@ -11,6 +11,7 @@ from ryu.app.ofctl.api import get_datapath
 
 from config import forwarding_config,qos_config
 from models import flow
+from qos import APP_UpdateEvent
 
 import requests
 import hashlib
@@ -18,6 +19,8 @@ import logging
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
+
+    _EVENTS = [APP_UpdateEvent]
 
     def __init__(self, *args, **kwargs):
         """Initial Setting method."""
@@ -35,6 +38,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
             parser = datapath.ofproto_parser
             req = parser.OFPFlowStatsRequest(datapath)
             datapath.send_msg(req)
+            self.update_app_for_flows(forwarding_config.flow_list)
             hub.sleep(1)
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
@@ -63,7 +67,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                                                stat.match.get('tcp_dst'),
                                                stat.byte_count, 1)
                         forwarding_config.flow_list.update({key_tuples: flow_value})
-                        self.update_app_for_flows(forwarding_config.flow_list)
                     else:
                         flow_value = forwarding_config.flow_list.get(key_tuples)
                         flow_value.byte_count_1 = flow_value.byte_count_2
@@ -89,7 +92,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                                                stat.match.get('udp_dst'),
                                                stat.byte_count, 1)
                         forwarding_config.flow_list.update({key_tuples: flow_value})
-                        self.update_app_for_flows(forwarding_config.flow_list)
                     else:
                         flow_value = forwarding_config.flow_list.get(key_tuples)
                         flow_value.byte_count_1 = flow_value.byte_count_2
@@ -128,3 +130,5 @@ class flowstatistic_monitor(app_manager.RyuApp):
                 if json_data is not None:
                     app_name = json_data.get('classifiedResult').get('classifiedName')
                     flow_info.app = app_name
+                    ev = APP_UpdateEvent('Update rate for app')
+                    self.send_event_to_observers(ev)

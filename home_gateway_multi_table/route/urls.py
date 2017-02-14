@@ -27,11 +27,12 @@ put_qos_meter_modify = '/qos/meter/modify'
 # topology
 get_qos_topology = '/qos/topology'
 # application(W.I.P.)
+get_app_info = '/qos/app/get_app_info'
 # rate-limit
 get_qos_rate_limit_member = '/qos/rate-limit/member/{mac}'
 put_qos_rate_limit_member = '/qos/rate-limit/member/{mac}'
-get_qos_rate_limit_app = '/qos/rate-limit/application'
-put_qos_rate_limit_app = '/qos/rate-limit/application'
+get_qos_rate_limit_app = '/qos/rate-limit/application/{app}'
+put_qos_rate_limit_app = '/qos/rate-limit/application/{app}'
 # flow
 get_flow_info = '/qos/flow/get_flow_info'
 # member
