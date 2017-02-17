@@ -112,7 +112,7 @@ class QosControl(app_manager.RyuApp):
                 else:
                     for key,flow in forwarding_config.flow_list.iteritems():
                         target_host = forwarding_config.member_list.get(mac)
-                        if (flow.dst_ip == target_host.ip or flow.src_mac == target_host.ip) and flow.app == app:
+                        if flow.dst_ip == target_host.ip and flow.app == app:
                             flow.rate = meter_id
                             flow_limited.append(flow)
 
@@ -258,7 +258,7 @@ class QosControlController(ControllerBase):
         dic = []
         for key,value in forwarding_config.member_list.iteritems():
             member = {"hostname": value.hostname, "ip": value.ip,
-                      "mac": value.mac, "datapath": value.datapath.id,
+                      "mac": value.mac, "datapath": str(value.datapath.id),
                       "port": value.port, "meter_id": value.meter_id}
             dic.append({key: member})
         body = json.dumps(dic)
@@ -272,7 +272,7 @@ class QosControlController(ControllerBase):
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
 
-    @route('ratelimit_for_member', urls.put_qos_rate_limit_member, methods=['PUT'])
+    @route('set_ratelimit_for_member', urls.put_qos_rate_limit_member, methods=['PUT'])
     def set_flow_for_ratelimite_for_member(self, req, **kwargs):
         qos_control = self.qos_control_spp
 
@@ -282,7 +282,7 @@ class QosControlController(ControllerBase):
         qos_control.rate_limit_for_member(mac,bandwidth)
         return Response(status=202)
 
-    @route('ratelimit_for_application', urls.put_qos_rate_limit_app, methods=['PUT'])
+    @route('set_ratelimit_for_app', urls.put_qos_rate_limit_app, methods=['PUT'])
     def set_flow_for_ratelimite_for_app(self, req, **kwargs):
         qos_control = self.qos_control_spp
 
@@ -292,3 +292,20 @@ class QosControlController(ControllerBase):
         mac = str(json_data.get('mac'))
         qos_control.rate_limit_for_app(app,mac,bandwidth)
         return Response(status=202)
+
+
+    @route('get_rate_for_app', urls.get_app_rate, methods=['GET'])
+    def get_rate_in_app(self, req, **kwargs):
+        app = str(kwargs['app'])
+        dic = {}
+        total_rate = 0
+        for key,value in forwarding_config.flow_list.iteritems():
+            if value.app == app and value.rate != 0:
+                if dic.get(value.dst_ip) is None:
+                    dic[value.dst_ip] = value.rate*8
+                else:
+                    dic[value.dst_ip] += value.rate*8
+                total_rate += value.rate*8
+        dic.update({'all': total_rate})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)

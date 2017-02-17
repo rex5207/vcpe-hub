@@ -39,11 +39,9 @@ class flowstatistic_monitor(app_manager.RyuApp):
             key_set = forwarding_config.flow_list.keys()
             for key in key_set:
                 flow = forwarding_config.flow_list[key]
-                if flow.exist==0:
+                if flow.exist == 0:
                     forwarding_config.flow_list.pop(key)
                 else:
-                    if self.flow_list_tmp.get(key) is not None:
-                        forwarding_config.flow_list[key].app = self.flow_list_tmp[key].app
                     forwarding_config.flow_list[key].exist = 0
             parser = datapath.ofproto_parser
             req = parser.OFPFlowStatsRequest(datapath)
@@ -77,6 +75,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                                                stat.match.get('tcp_src'),
                                                stat.match.get('tcp_dst'),
                                                stat.byte_count, 1)
+                        flow_value.rate_calculation()
                         forwarding_config.flow_list.update({key_tuples: flow_value})
                     else:
                         flow_value = forwarding_config.flow_list.get(key_tuples)
@@ -99,6 +98,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
                                                stat.match.get('udp_src'),
                                                stat.match.get('udp_dst'),
                                                stat.byte_count, 1)
+                        flow_value.rate_calculation()
                         forwarding_config.flow_list.update({key_tuples: flow_value})
                     else:
                         flow_value = forwarding_config.flow_list.get(key_tuples)

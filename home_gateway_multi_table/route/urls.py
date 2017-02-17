@@ -28,6 +28,7 @@ put_qos_meter_modify = '/qos/meter/modify'
 get_qos_topology = '/qos/topology'
 # application(W.I.P.)
 get_app_info = '/qos/app/get_app_info'
+get_app_rate = '/qos/app/rate/{app}'
 # rate-limit
 get_qos_rate_limit_member = '/qos/rate-limit/member/{mac}'
 put_qos_rate_limit_member = '/qos/rate-limit/member/{mac}'
