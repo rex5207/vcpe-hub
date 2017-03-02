@@ -38,3 +38,4 @@ put_qos_rate_limit_app = '/qos/rate-limit/application/{app}'
 get_flow_info = '/qos/flow/get_flow_info'
 # member
 get_member_info = '/qos/member/get_member_info'
+get_host_rate = '/qos/member/rate'
