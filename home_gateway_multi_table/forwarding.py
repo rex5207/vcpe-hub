@@ -186,12 +186,12 @@ class L2Switch(app_manager.RyuApp):
                                          eth_type=ether.ETH_TYPE_IP,
                                          ipv4_src=pkt_ipv4.dst,
                                          ipv4_dst=pkt_ipv4.src)
-        ofp_helper.add_flow_with_next(datapath, table_id=self.table_id,
-                                      priority=self.service_priority, match=match,
-                                      actions=actions, idle_timeout=10)
-        ofp_helper.add_flow_with_next(datapath, table_id=self.table_id,
-                                      priority=self.service_priority, match=match_back,
-                                      actions=actions_back, idle_timeout=10)
+        ofp_helper.add_write_flow_with_next(datapath, table_id=self.table_id,
+                                            priority=self.service_priority, match=match,
+                                            actions=actions, idle_timeout=10)
+        ofp_helper.add_flow(datapath, table_id=self.table_id,
+                            priority=self.service_priority, match=match_back,
+                            actions=actions_back, idle_timeout=10)
         ofp_helper.send_packet_out(msg, in_port, actions)
 
     def _broadcast_pkt(self, msg, in_port):

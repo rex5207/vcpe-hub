@@ -224,8 +224,7 @@ class SNAT(app_manager.RyuApp):
 
             actions_back = [parser.OFPActionSetField(eth_dst=eth_src),
                             parser.OFPActionSetField(ipv4_dst=ipv4_src),
-                            parser.OFPActionSetField(tcp_dst=tcp_src),
-                            parser.OFPActionOutput(in_port)]
+                            parser.OFPActionSetField(tcp_dst=tcp_src)]
         elif pkt_udp:
             # Install UDP Flow Entry
             udp_src = pkt_udp.src_port
