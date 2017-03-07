@@ -253,8 +253,7 @@ class SNAT(app_manager.RyuApp):
                                          udp_dst=nat_port)
             actions_back = [parser.OFPActionSetField(eth_dst=eth_src),
                             parser.OFPActionSetField(ipv4_dst=ipv4_src),
-                            parser.OFPActionSetField(udp_dst=udp_src),
-                            parser.OFPActionOutput(in_port)]
+                            parser.OFPActionSetField(udp_dst=udp_src)]
         else:
             pass
 
@@ -262,9 +261,10 @@ class SNAT(app_manager.RyuApp):
                             priority=self.service_priority, match=match,
                             actions=actions, idle_timeout=self.IDLE_TIME)
 
-        ofp_helper.add_flow(datapath, table_id=self.ingress_table_id,
-                            priority=self.service_priority, match=match_back,
-                            actions=actions_back, idle_timeout=self.IDLE_TIME)
+        # outside - inside
+        ofp_helper.add_flow_with_next(datapath, table_id=self.ingress_table_id,
+                                      priority=self.service_priority, match=match_back,
+                                      actions=actions_back, idle_timeout=self.IDLE_TIME)
 
         d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
