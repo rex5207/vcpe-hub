@@ -22,6 +22,7 @@ from ryu.lib import mac
 
 from config import service_config, forwarding_config
 from helper import ofp_helper
+from models import nat_settings
 from models.member import Member
 
 
@@ -37,6 +38,9 @@ class L2Switch(app_manager.RyuApp):
         self.service_priority = service_config.service_priority['forwarding']
         self.goto_table_priority = service_config.service_priority['goto_table']
 
+        settings = nat_settings.load()
+        self.wan_port = settings['wan_port']
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
@@ -50,7 +54,7 @@ class L2Switch(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
-        if not service_config.service_status['forwarding']:
+        if service_config.service_status['nat']:
             return
 
         msg = ev.msg
@@ -186,12 +190,15 @@ class L2Switch(app_manager.RyuApp):
                                          eth_type=ether.ETH_TYPE_IP,
                                          ipv4_src=pkt_ipv4.dst,
                                          ipv4_dst=pkt_ipv4.src)
-        ofp_helper.add_write_flow_with_next(datapath, table_id=self.table_id,
-                                            priority=self.service_priority, match=match,
-                                            actions=actions, idle_timeout=10)
+
         ofp_helper.add_flow(datapath, table_id=self.table_id,
                             priority=self.service_priority, match=match_back,
                             actions=actions_back, idle_timeout=10)
+
+        ofp_helper.add_flow(datapath, table_id=self.table_id,
+                            priority=self.service_priority, match=match,
+                            actions=actions, idle_timeout=10)
+
         ofp_helper.send_packet_out(msg, in_port, actions)
 
     def _broadcast_pkt(self, msg, in_port):

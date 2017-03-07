@@ -41,6 +41,7 @@ class SNAT(app_manager.RyuApp):
 
         self.ingress_table_id = service_config.service_sequence['nat_ingress']
         self.egress_table_id = service_config.service_sequence['nat_egress']
+        self.forward_table_id = service_config.service_sequence['forwarding']
         self.goto_table_priority = service_config.service_priority['goto_table']
         self.service_priority = service_config.service_priority['nat']
 
@@ -202,6 +203,7 @@ class SNAT(app_manager.RyuApp):
             tcp_src = pkt_tcp.src_port
             tcp_dst = pkt_tcp.dst_port
 
+            # egress
             match = parser.OFPMatch(in_port=in_port,
                                     eth_type=ether.ETH_TYPE_IP,
                                     ip_proto=inet.IPPROTO_TCP,
@@ -209,12 +211,12 @@ class SNAT(app_manager.RyuApp):
                                     ipv4_dst=ipv4_dst,
                                     tcp_src=tcp_src,
                                     tcp_dst=tcp_dst)
-
             actions = [parser.OFPActionSetField(eth_dst=IP_TO_MAC_TABLE[target_ip]),
                        parser.OFPActionSetField(ipv4_src=self.public_ip),
                        parser.OFPActionSetField(tcp_src=nat_port),
                        parser.OFPActionOutput(out_port)]
 
+            # ingress
             match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                          ip_proto=inet.IPPROTO_TCP,
                                          ipv4_src=ipv4_dst,
@@ -225,6 +227,14 @@ class SNAT(app_manager.RyuApp):
             actions_back = [parser.OFPActionSetField(eth_dst=eth_src),
                             parser.OFPActionSetField(ipv4_dst=ipv4_src),
                             parser.OFPActionSetField(tcp_dst=tcp_src)]
+            forward_match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                                 ip_proto=inet.IPPROTO_TCP,
+                                                 ipv4_src=ipv4_dst,
+                                                 ipv4_dst=ipv4_src,
+                                                 tcp_src=tcp_dst,
+                                                 tcp_dst=tcp_src)
+            forward_actions_back = [parser.OFPActionOutput(in_port)]
+
         elif pkt_udp:
             # Install UDP Flow Entry
             udp_src = pkt_udp.src_port
@@ -253,18 +263,29 @@ class SNAT(app_manager.RyuApp):
             actions_back = [parser.OFPActionSetField(eth_dst=eth_src),
                             parser.OFPActionSetField(ipv4_dst=ipv4_src),
                             parser.OFPActionSetField(udp_dst=udp_src)]
+
+            forward_match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+                                                 ip_proto=inet.IPPROTO_UDP,
+                                                 ipv4_src=ipv4_dst,
+                                                 ipv4_dst=ipv4_src,
+                                                 udp_src=udp_dst,
+                                                 udp_dst=udp_src)
+            forward_actions_back = [parser.OFPActionOutput(in_port)]
         else:
             pass
-
+        # inside - outside ( Table 4)
         ofp_helper.add_flow(datapath, table_id=self.egress_table_id,
                             priority=self.service_priority, match=match,
                             actions=actions, idle_timeout=self.IDLE_TIME)
 
-        # outside - inside
+        # outside - inside (Table 0)
         ofp_helper.add_flow_with_next(datapath, table_id=self.ingress_table_id,
                                       priority=self.service_priority, match=match_back,
                                       actions=actions_back, idle_timeout=self.IDLE_TIME)
-
+        # outside - inside forwarding (Table 3)
+        ofp_helper.add_flow(datapath, table_id=self.forward_table_id,
+                            priority=self.service_priority, match=forward_match_back,
+                            actions=forward_actions_back, idle_timeout=self.IDLE_TIME)
         d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
             d = data
@@ -372,7 +393,7 @@ class SNATRest(ControllerBase):
         save_dict = {}
 
         save_dict['wan_port'] = 1
-        save_dict['public_ip'] = IPAddress('192.168.2.62')
+        save_dict['public_ip'] = IPAddress('192.168.2.144')
         save_dict['public_gateway'] = IPAddress('192.168.2.1')
         save_dict['public_ip_subnetwork'] = IPNetwork('192.168.2.0/24')
 

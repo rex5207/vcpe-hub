@@ -56,7 +56,7 @@ class ServiceControl(app_manager.RyuApp):
         ofp_helper.add_flow_goto_next(datapath, 1, self.goto_table_priority, match)
         ofp_helper.add_flow_goto_next(datapath, 2, self.goto_table_priority, match)
         ofp_helper.add_flow_goto_next(datapath, 3, self.goto_table_priority, match)
-        ofp_helper.add_flow_goto_next(datapath, 4, self.goto_table_priority, match)
+        # ofp_helper.add_flow_goto_next(datapath, 4, self.goto_table_priority, match)
 
     def init_service(self, datapath):
         service_status = service_config.service_status
