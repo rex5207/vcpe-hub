@@ -63,7 +63,7 @@ class QosControl(app_manager.RyuApp):
         out_port = forwarding_config.member_list.get(mac).port
         parser = datapath.ofproto_parser
         actions = [parser.OFPActionOutput(out_port)]
-        match = parser.OFPMatch(eth_src=mac)
+        match = parser.OFPMatch(eth_dst=mac)
         ofp_helper.add_flow_rate_limit(datapath=datapath,
                                        table_id=self.table_id,
                                        priority=self.member_limit_priority,
