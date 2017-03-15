@@ -17,16 +17,20 @@ from ryu.lib.packet import ether_types
 from route import urls
 from helper import ofp_helper
 from config import forwarding_config, qos_config, service_config
+
+import requests
+import hashlib
+
 qos_instance_name = 'qos_api_app'
 
-class APP_UpdateEvent(EventBase):
+class App_UpdateEvent(EventBase):
     def __init__(self, msg):
         self.msg = msg
 
 class QosControl(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     _CONTEXTS = {'wsgi': WSGIApplication}
-    _EVENTS = [APP_UpdateEvent]
+    _EVENTS = [App_UpdateEvent]
     MyDATAPATH = None
 
     def __init__(self, *args, **kwargs):
@@ -47,14 +51,7 @@ class QosControl(app_manager.RyuApp):
         self.MyDATAPATH = datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-
-        # update meter list
         self._request_meter_config_stats(datapath)
-
-        # # Table Miss, forward packet to next table
-        # match = parser.OFPMatch()
-        # ofp_helper.add_flow_goto_next(datapath, table_id=self.table_id,
-        #                               priority=self.goto_table_priority, match=match)
 
     def rate_limit_for_member(self, mac, bandwidth):
         meter_id = 0
@@ -66,7 +63,7 @@ class QosControl(app_manager.RyuApp):
         out_port = forwarding_config.member_list.get(mac).port
         parser = datapath.ofproto_parser
         actions = [parser.OFPActionOutput(out_port)]
-        match = parser.OFPMatch(eth_src=mac)
+        match = parser.OFPMatch(eth_dst=mac)
         ofp_helper.add_flow_rate_limit(datapath=datapath,
                                        table_id=self.table_id,
                                        priority=self.member_limit_priority,
@@ -88,54 +85,142 @@ class QosControl(app_manager.RyuApp):
             else:
                 rate_for_member = {mac: {"bandwidth" : bandwidth} }
                 qos_config.app_list.get(app).get(mac)['bandwidth'] = bandwidth
-        ev = APP_UpdateEvent('Update rate for app')
-        self.send_event_to_observers(ev)
+
+        # Add rule for all flow which app is this app
+        app_setting = qos_config.app_list.get(app).get(mac)
+        meter_id = app_setting.get('meter_id')
+        bandwidth = app_setting.get('bandwidth')
+        datapath = self.MyDATAPATH
+        parser = datapath.ofproto_parser
+        if mac is not 'all':
+            target_host = forwarding_config.member_list.get(mac)
+        for key,flow in forwarding_config.flow_list.iteritems():
+            if (mac == 'all') or (target_host.mac == flow.dst_mac) or (target_host.ip == flow.dst_ip):
+                if flow.ip_proto == inet.IPPROTO_TCP:
+                     match = parser.OFPMatch(eth_src=flow.src_mac,
+                                    eth_dst=flow.dst_mac,
+                                    eth_type=ether.ETH_TYPE_IP,
+                                    ipv4_src=flow.src_ip,
+                                    ipv4_dst=flow.dst_ip,
+                                    ip_proto=flow.ip_proto,
+                                    tcp_src=flow.src_port,
+                                    tcp_dst=flow.dst_port)
+                else:
+                     match = parser.OFPMatch(eth_src=flow.src_mac,
+                                    eth_dst=flow.dst_mac,
+                                    eth_type=ether.ETH_TYPE_IP,
+                                    ipv4_src=flow.src_ip,
+                                    ipv4_dst=flow.dst_ip,
+                                    ip_proto=flow.ip_proto,
+                                    udp_src=flow.src_port,
+                                    udp_dst=flow.dst_port)
+                ofp_helper.add_flow_rate_limit(datapath=self.MyDATAPATH,
+                                               table_id=self.table_id,
+                                               priority=self.app_limit_priority,
+                                               match=match,
+                                               meter_id=meter_id,
+                                               idle_timeout=10)
+        self.bandwidth_update_handler()
 
 
+    # When identify what the app is, adding the meter to this flow
+    def flow_meter_add_handler(self, flow):
+        app_setting = qos_config.app_list.get(flow.app)
+        if app_setting is None:
+            return
+        for mac,meter in app_setting.iteritems():
+            target_host = forwarding_config.member_list.get(mac)
+            if (target_host.mac == flow.dst_mac) or (target_host.ip == flow.dst_ip) or (mac == 'all'):
+                meter_id = meter.get('meter_id')
+                bandwidth = meter.get('bandwidth')
+                datapath = self.MyDATAPATH
+                parser = datapath.ofproto_parser
+                if flow.ip_proto == inet.IPPROTO_TCP:
+                     match = parser.OFPMatch(eth_src=flow.src_mac,
+                                    eth_dst=flow.dst_mac,
+                                    eth_type=ether.ETH_TYPE_IP,
+                                    ipv4_src=flow.src_ip,
+                                    ipv4_dst=flow.dst_ip,
+                                    ip_proto=flow.ip_proto,
+                                    tcp_src=flow.src_port,
+                                    tcp_dst=flow.dst_port)
+                else:
+                     match = parser.OFPMatch(eth_src=flow.src_mac,
+                                    eth_dst=flow.dst_mac,
+                                    eth_type=ether.ETH_TYPE_IP,
+                                    ipv4_src=flow.src_ip,
+                                    ipv4_dst=flow.dst_ip,
+                                    ip_proto=flow.ip_proto,
+                                    udp_src=flow.src_port,
+                                    udp_dst=flow.dst_port)
 
-    @set_ev_cls(APP_UpdateEvent)
-    def app_event_handler(self, ev):
+                ofp_helper.add_flow_rate_limit(datapath=self.MyDATAPATH,
+                                               table_id=self.table_id,
+                                               priority=self.app_limit_priority,
+                                               match=match,
+                                               meter_id=meter_id,
+                                               idle_timeout=10)
+
+    def bandwidth_update_handler(self):
         for app,target in qos_config.app_list.iteritems():
             for mac,meter in target.iteritems():
                 meter_id = meter.get('meter_id')
                 bandwidth = meter.get('bandwidth')
-                # datapath = forwarding_config.member_list.get(mac).datapath
                 datapath = self.MyDATAPATH
                 parser = datapath.ofproto_parser
                 #set the rule for the flows of the app
                 flow_limited = []
                 if mac == "all" :
                     for key,flow in forwarding_config.flow_list.iteritems():
-                        if flow.app == app:
-                            flow.rate = meter_id
+                        if flow.dst_ip.startswith("192.168") and flow.app == app:
                             flow_limited.append(flow)
                 else:
                     for key,flow in forwarding_config.flow_list.iteritems():
                         target_host = forwarding_config.member_list.get(mac)
                         if flow.dst_ip == target_host.ip and flow.app == app:
-                            flow.rate = meter_id
                             flow_limited.append(flow)
 
-                if len(flow_limited) == 0:
-                    ofp_helper.mod_meter(datapath, bandwidth, meter_id)
-                    self._request_meter_config_stats(datapath)
+                if len(flow_limited) == 0 :
                     continue
-                for flow in flow_limited:
-                    match = parser.OFPMatch(ipv4_src=flow.src_ip,
-                                            ipv4_dst=flow.dst_ip,
-                                            ip_proto=flow.ip_proto,
-                                            tcp_src=flow.src_port,
-                                            tcp_dst=flow.dst_port)
-                    ofp_helper.add_flow_rate_limit(datapath=datapath,
-                                                   table_id=self.table_id,
-                                                   priority=self.app_limit_priority,
-                                                   match=match,
-                                                   meter_id=meter_id,
-                                                   idle_timeout=10)
+                elif qos_config.meter.get(meter_id) != str(bandwidth/len(flow_limited)) :
+                    ofp_helper.mod_meter(datapath, bandwidth/len(flow_limited), meter_id)
+                    self._request_meter_config_stats(datapath)
 
-                ofp_helper.mod_meter(datapath, bandwidth/len(flow_limited), meter_id)
-                self._request_meter_config_stats(datapath)
+    @set_ev_cls(App_UpdateEvent)
+    def update_app_for_flows(self, ev):
+        for key in forwarding_config.flow_list.keys():
+            flow_info = forwarding_config.flow_list.get(key)
+            if flow_info is not None and flow_info.app == 'Others' and flow_info.src_ip is not None:
+                json_data = None
+                m = hashlib.sha256()
+                m.update(flow_info.src_ip
+                         + flow_info.dst_ip
+                         + str(flow_info.src_port)
+                         + str(flow_info.dst_port)
+                         + str(flow_info.ip_proto))
+                url = qos_config.get_flowstatistic_info + m.hexdigest()
+                response = requests.get(url)
+                flow_info.counter = flow_info.counter + 1
+                if response.status_code == 200:
+                    json_data = response.json()
+                else:
+                    m = hashlib.sha256()
+                    m.update(flow_info.dst_ip
+                             + flow_info.src_ip
+                             + str(flow_info.dst_port)
+                             + str(flow_info.src_port)
+                             + str(flow_info.ip_proto))
+                    url = qos_config.get_flowstatistic_info + m.hexdigest()
+                    response = requests.get(url)
+                    if response.status_code == 200:
+                        json_data = response.json()
 
+                if json_data is not None:
+                    app_name = json_data.get('classifiedResult').get('classifiedName')
+                    flow_info.app = app_name
+                    #Let this flow adding the rate limitation meter
+                    self.flow_meter_add_handler(flow_info)
+        self.bandwidth_update_handler()
 
     # meter
     def _request_meter_config_stats(self, datapath):
@@ -300,12 +385,27 @@ class QosControlController(ControllerBase):
         dic = {}
         total_rate = 0
         for key,value in forwarding_config.flow_list.iteritems():
-            if value.app == app and value.rate != 0:
+            if value.app == app and value.rate != 0 and value.dst_ip.startswith("192.168"):
                 if dic.get(value.dst_ip) is None:
                     dic[value.dst_ip] = value.rate*8
                 else:
                     dic[value.dst_ip] += value.rate*8
                 total_rate += value.rate*8
         dic.update({'all': total_rate})
+        body = json.dumps(dic)
+        return Response(content_type='application/json', body=body)
+
+
+    @route('get_rate_for_host', urls.get_host_rate, methods=['GET'])
+    def get_rate_in_host(self, req, **kwargs):
+        dic = []
+        for mac,member in forwarding_config.member_list.iteritems():
+            if member.ip is not None and member.ip.startswith("192.168"):
+                total_rate = 0
+                for key,value in forwarding_config.flow_list.iteritems():
+                    if value.dst_ip == member.ip or value.dst_mac == member.mac:
+                        total_rate += value.rate*8
+                if total_rate is not 0 :
+                    dic.append({'mac':member.mac, 'ip':member.ip, 'rate':total_rate})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
