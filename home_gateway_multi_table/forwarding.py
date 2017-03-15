@@ -54,8 +54,8 @@ class L2Switch(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
-        if service_config.service_status['nat']:
-            return
+        # if service_config.service_status['nat']:
+        #     return
 
         msg = ev.msg
         datapath = msg.datapath
@@ -190,14 +190,16 @@ class L2Switch(app_manager.RyuApp):
                                          eth_type=ether.ETH_TYPE_IP,
                                          ipv4_src=pkt_ipv4.dst,
                                          ipv4_dst=pkt_ipv4.src)
+        if service_configservice_status['nat']:
+            pass
+        else:
+            ofp_helper.add_flow(datapath, table_id=self.table_id,
+                                priority=self.service_priority, match=match_back,
+                                actions=actions_back, idle_timeout=10)
 
-        ofp_helper.add_flow(datapath, table_id=self.table_id,
-                            priority=self.service_priority, match=match_back,
-                            actions=actions_back, idle_timeout=10)
-
-        ofp_helper.add_flow(datapath, table_id=self.table_id,
-                            priority=self.service_priority, match=match,
-                            actions=actions, idle_timeout=10)
+            ofp_helper.add_flow(datapath, table_id=self.table_id,
+                                priority=self.service_priority, match=match,
+                                actions=actions, idle_timeout=10)
 
         ofp_helper.send_packet_out(msg, in_port, actions)
 

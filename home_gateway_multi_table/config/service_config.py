@@ -10,7 +10,7 @@ service_priority = {
     'forwarding': 5,
     # nat/dhcp
     'dhcp': 100,
-    'nat': 10,
+    'nat': 1000,
     # next in all table
     'goto_table': 0,
     # packet_in in last table

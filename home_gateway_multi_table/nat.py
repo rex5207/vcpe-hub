@@ -55,7 +55,7 @@ class SNAT(app_manager.RyuApp):
         self.mac_on_wan = settings['mac_on_wan']
         self.mac_on_lan = settings['mac_on_lan']
 
-        self.IDLE_TIME = 10
+        self.IDLE_TIME = 100
         self.port_counter = -1
         self.ports_pool = range(2000, 65536)
 
@@ -203,6 +203,10 @@ class SNAT(app_manager.RyuApp):
             tcp_src = pkt_tcp.src_port
             tcp_dst = pkt_tcp.dst_port
 
+            print ipv4_src
+            print ipv4_dst
+            print tcp_src
+            print tcp_dst
             # egress
             match = parser.OFPMatch(in_port=in_port,
                                     eth_type=ether.ETH_TYPE_IP,
