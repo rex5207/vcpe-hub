@@ -7,7 +7,6 @@ from ryu.controller.event import EventBase
 from ryu.lib import hub
 from ryu.ofproto import ether
 from ryu.ofproto import inet
-from ryu.app.ofctl.api import get_datapath
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
@@ -16,11 +15,10 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.lib.packet import dhcp
-
+from ryu.app.ofctl.api import get_datapath
 from config import forwarding_config, qos_config
 from models import flow
 from models.member import Member
-
 from qos import App_UpdateEvent
 
 import logging
@@ -114,41 +112,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
                         flow_value.exist = 1
-                    self.flow_list_tmp.update({key_tuples: flow_value})
-
-    def update_app_for_flows(self, flow_list):
-        for key in flow_list.keys():
-            flow_info = flow_list.get(key)
-            if flow_info is not None and flow_info.app == 'Others' and flow_info.src_ip is not None:
-                json_data = None
-                m = hashlib.sha256()
-                m.update(flow_info.src_ip +
-                         flow_info.dst_ip +
-                         str(flow_info.src_port) +
-                         str(flow_info.dst_port) +
-                         str(flow_info.ip_proto))
-                url = qos_config.get_flowstatistic_info + m.hexdigest()
-                response = requests.get(url)
-                flow_info.counter = flow_info.counter + 1
-                if response.status_code == 200:
-                    json_data = response.json()
-                else:
-                    m = hashlib.sha256()
-                    m.update(flow_info.dst_ip +
-                             flow_info.src_ip +
-                             str(flow_info.dst_port) +
-                             str(flow_info.src_port) +
-                             str(flow_info.ip_proto))
-                    url = qos_config.get_flowstatistic_info + m.hexdigest()
-                    response = requests.get(url)
-                    if response.status_code == 200:
-                        json_data = response.json()
-
-                if json_data is not None:
-                    app_name = json_data.get('classifiedResult').get('classifiedName')
-                    flow_info.app = app_name
-        ev = APP_UpdateEvent('Update rate for app')
-        self.send_event_to_observers(ev)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
