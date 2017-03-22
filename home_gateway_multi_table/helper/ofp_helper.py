@@ -12,14 +12,16 @@ def add_flow(datapath, table_id, priority, match, actions,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     else:
         mod = parser.OFPFlowMod(datapath=datapath,
                                 idle_timeout=idle_timeout,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
@@ -32,7 +34,8 @@ def del_flow(datapath, table_id, priority, match):
                             out_group=ofproto.OFPG_ANY,
                             priority=priority,
                             match=match,
-                            table_id=table_id)
+                            table_id=table_id,
+                            flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
@@ -51,14 +54,16 @@ def add_flow_with_next(datapath, table_id, priority, match, actions,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     else:
         mod = parser.OFPFlowMod(datapath=datapath,
                                 idle_timeout=idle_timeout,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
@@ -76,14 +81,16 @@ def add_flow_goto_next(datapath, table_id, priority, match,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     else:
         mod = parser.OFPFlowMod(datapath=datapath,
                                 idle_timeout=idle_timeout,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
@@ -105,11 +112,13 @@ def add_flow_rate_limit(datapath, table_id, priority, match, meter_id,
     if buffer_id:
         mod = parser.OFPFlowMod(datapath=datapath, table_id=table_id, command=command,
                                 buffer_id=buffer_id, priority=priority, match=match,
-                                idle_timeout=idle_timeout, instructions=inst)
+                                idle_timeout=idle_timeout, instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     else:
         mod = parser.OFPFlowMod(datapath=datapath, table_id=table_id, command=command,
                                 priority=priority, idle_timeout=idle_timeout,
-                                match=match, instructions=inst)
+                                match=match, instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
