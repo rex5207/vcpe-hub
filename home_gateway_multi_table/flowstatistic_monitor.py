@@ -23,21 +23,18 @@ from models.member import Member
 
 from qos import APP_UpdateEvent
 
-import requests
-import hashlib
 import logging
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
 
-    _EVENTS = [APP_UpdateEvent]
+    _EVENTS = [App_UpdateEvent]
 
     def __init__(self, *args, **kwargs):
         """Initial Setting method."""
         super(flowstatistic_monitor, self).__init__(*args, **kwargs)
         self.topology_api_app = self
         logging.getLogger("requests").setLevel(logging.WARNING)
-        self.flow_list_tmp = {}
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -56,14 +53,16 @@ class flowstatistic_monitor(app_manager.RyuApp):
             parser = datapath.ofproto_parser
             req = parser.OFPFlowStatsRequest(datapath)
             datapath.send_msg(req)
-            self.update_app_for_flows(forwarding_config.flow_list)
+            ev = App_UpdateEvent('Update rate for app')
+            self.send_event_to_observers(ev)
             hub.sleep(1)
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
-        self.flow_list_tmp = {}
         body = ev.msg.body
         for stat in body:
+            if stat.table_id != 3:
+                continue
             if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
                 key_tuples = str(ev.msg.datapath.id)\
                              + '' or stat.match.get('eth_src')\
@@ -93,7 +92,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
                         flow_value.exist = 1
-                    self.flow_list_tmp.update({key_tuples: flow_value})
 
                 elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(stat.match.get('udp_src'))\
