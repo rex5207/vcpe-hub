@@ -42,18 +42,32 @@ class flowstatistic_monitor(app_manager.RyuApp):
     def _monitor(self, datapath):
         while True:
             key_set = forwarding_config.flow_list.keys()
-            for key in key_set:
-                flow = forwarding_config.flow_list[key]
-                if flow.exist == 0:
-                    forwarding_config.flow_list.pop(key)
-                else:
-                    forwarding_config.flow_list[key].exist = 0
             parser = datapath.ofproto_parser
             req = parser.OFPFlowStatsRequest(datapath)
             datapath.send_msg(req)
             ev = App_UpdateEvent('Update rate for app')
             self.send_event_to_observers(ev)
             hub.sleep(1)
+
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
+    def flow_removed_handler(self, ev):
+        msg = ev.msg
+        dp = msg.datapath
+        ofp = dp.ofproto
+        if msg.reason == ofp.OFPRR_IDLE_TIMEOUT:
+            reason = 'IDLE TIMEOUT'
+            if msg.match.get('eth_type') == ether.ETH_TYPE_IP:
+                key_tuples = str(ev.msg.datapath.id)\
+                             + '' or msg.match.get('eth_src')\
+                             + msg.match.get('eth_dst')\
+                             + msg.match.get('ipv4_src')\
+                             + msg.match.get('ipv4_dst')\
+                             + str(msg.match.get('ip_proto'))
+                if msg.match.get('ip_proto') == inet.IPPROTO_TCP:
+                    key_tuples += str(msg.match.get('tcp_src')) + str(msg.match.get('tcp_dst'))
+                elif msg.match.get('ip_proto') == inet.IPPROTO_UDP:
+                    key_tuples += str(msg.match.get('udp_src')) + str(msg.match.get('udp_dst'))
+                del forwarding_config.flow_list[key_tuples]
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
@@ -89,7 +103,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_1 = flow_value.byte_count_2
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
-                        flow_value.exist = 1
 
                 elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(stat.match.get('udp_src'))\
