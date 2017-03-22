@@ -19,7 +19,7 @@ from ryu.lib.packet import ether_types
 from netaddr import IPNetwork, IPAddress
 import pprint
 
-from config import service_config
+from config import service_config, forwarding_config
 from models import nat_settings
 from helper import ofp_helper, nat_helper
 from route import urls
@@ -137,9 +137,6 @@ class SNAT(app_manager.RyuApp):
                                         src_ip=self.public_ip,
                                         target_mac=pkt_arp.src_mac,
                                         target_ip=pkt_arp.src_ip)
-        else:
-            # If not ask above two ip, no need to handle reply
-            pass
 
         return data
 
@@ -202,11 +199,6 @@ class SNAT(app_manager.RyuApp):
             # Install TCP Flow Entry
             tcp_src = pkt_tcp.src_port
             tcp_dst = pkt_tcp.dst_port
-
-            print ipv4_src
-            print ipv4_dst
-            print tcp_src
-            print tcp_dst
             # egress
             match = parser.OFPMatch(in_port=in_port,
                                     eth_type=ether.ETH_TYPE_IP,
@@ -217,8 +209,8 @@ class SNAT(app_manager.RyuApp):
                                     tcp_dst=tcp_dst)
             actions = [parser.OFPActionSetField(eth_dst=IP_TO_MAC_TABLE[target_ip]),
                        parser.OFPActionSetField(ipv4_src=self.public_ip),
-                       parser.OFPActionSetField(tcp_src=nat_port),
-                       parser.OFPActionOutput(out_port)]
+                       parser.OFPActionSetField(tcp_src=nat_port)]
+            forward_actions = [parser.OFPActionOutput(out_port)]
 
             # ingress
             match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -254,8 +246,8 @@ class SNAT(app_manager.RyuApp):
                                     udp_dst=udp_dst)
             actions = [parser.OFPActionSetField(eth_dst=IP_TO_MAC_TABLE[target_ip]),
                        parser.OFPActionSetField(ipv4_src=self.public_ip),
-                       parser.OFPActionSetField(udp_src=nat_port),
-                       parser.OFPActionOutput(out_port)]
+                       parser.OFPActionSetField(udp_src=nat_port)]
+            forward_actions = [parser.OFPActionOutput(out_port)]
 
             # ingress, outside-to-inside
             match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
@@ -277,19 +269,28 @@ class SNAT(app_manager.RyuApp):
             forward_actions_back = [parser.OFPActionOutput(in_port)]
         else:
             pass
-        # inside - outside ( Table 4)
+        # outside - inside set-filed (Table 0)
+        ofp_helper.add_flow_with_next(datapath, table_id=self.ingress_table_id,
+                                      priority=self.service_priority, match=match_back,
+                                      actions=actions_back, idle_timeout=self.IDLE_TIME)
+        # inside - outside go-to-next (Table 0)
+        ofp_helper.add_flow_goto_next(datapath, table_id=self.ingress_table_id,
+                                      priority=self.service_priority, match=match,
+                                      idle_timeout=self.IDLE_TIME)
+        # outside - inside out-port (Table 3)
+        ofp_helper.add_flow(datapath, table_id=self.forward_table_id,
+                            priority=self.service_priority, match=forward_match_back,
+                            actions=forward_actions_back, idle_timeout=self.IDLE_TIME)
+        # inside - outside write-out-port(Table 3)
+        ofp_helper.add_write_flow_with_next(datapath, table_id=self.forward_table_id,
+                                            priority=self.service_priority, match=match,
+                                            actions=forward_actions, idle_timeout=self.IDLE_TIME)
+        # inside - outside set-field( Table 4)
         ofp_helper.add_flow(datapath, table_id=self.egress_table_id,
                             priority=self.service_priority, match=match,
                             actions=actions, idle_timeout=self.IDLE_TIME)
 
-        # outside - inside (Table 0)
-        ofp_helper.add_flow_with_next(datapath, table_id=self.ingress_table_id,
-                                      priority=self.service_priority, match=match_back,
-                                      actions=actions_back, idle_timeout=self.IDLE_TIME)
-        # outside - inside forwarding (Table 3)
-        ofp_helper.add_flow(datapath, table_id=self.forward_table_id,
-                            priority=self.service_priority, match=forward_match_back,
-                            actions=forward_actions_back, idle_timeout=self.IDLE_TIME)
+        # send first packet back to switch
         d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
             d = data

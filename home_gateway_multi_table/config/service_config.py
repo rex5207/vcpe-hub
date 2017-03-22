@@ -25,7 +25,7 @@ service_sequence = {
     'forwarding': 3,
     'nat_egress': 4,   # inside-to-outside
     'dhcp': 4,
-    'packet_in': 3,    # last table
+    'packet_in': 4,    # last table
 }
 
 # service enable or disable

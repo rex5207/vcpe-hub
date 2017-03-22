@@ -1,5 +1,6 @@
 import json
-import time, datetime
+import time
+import datetime
 from webob import Response
 from ryu.base import app_manager
 from ryu.controller import ofp_event
@@ -19,9 +20,11 @@ from helper import ofp_helper
 from config import forwarding_config, qos_config, service_config
 qos_instance_name = 'qos_api_app'
 
+
 class APP_UpdateEvent(EventBase):
     def __init__(self, msg):
         self.msg = msg
+
 
 class QosControl(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -77,40 +80,39 @@ class QosControl(app_manager.RyuApp):
     def rate_limit_for_app(self, app, mac, bandwidth):
         if qos_config.app_list.get(app) is None:
             new_meter_id = self.get_free_meterid()
-            self.add_meter(bandwidth,new_meter_id)
-            rate_for_member = {mac: {"meter_id" : new_meter_id,"bandwidth" : bandwidth} }
-            qos_config.app_list.update({app : rate_for_member})
+            self.add_meter(bandwidth, new_meter_id)
+            rate_for_member = {mac: {"meter_id": new_meter_id, "bandwidth": bandwidth}}
+            qos_config.app_list.update({app: rate_for_member})
         else:
             if qos_config.app_list.get(app).get(mac) is None:
                 new_meter_id = self.get_free_meterid()
-                self.add_meter(bandwidth,new_meter_id)
-                qos_config.app_list.get(app).update({mac: {"meter_id" : new_meter_id,"bandwidth" : bandwidth}})
+                self.add_meter(bandwidth, new_meter_id)
+                qos_config.app_list.get(app).update({mac: {"meter_id": new_meter_id,
+                                                           "bandwidth": bandwidth}})
             else:
-                rate_for_member = {mac: {"bandwidth" : bandwidth} }
+                rate_for_member = {mac: {"bandwidth": bandwidth}}
                 qos_config.app_list.get(app).get(mac)['bandwidth'] = bandwidth
         ev = APP_UpdateEvent('Update rate for app')
         self.send_event_to_observers(ev)
 
-
-
     @set_ev_cls(APP_UpdateEvent)
     def app_event_handler(self, ev):
-        for app,target in qos_config.app_list.iteritems():
-            for mac,meter in target.iteritems():
+        for app, target in qos_config.app_list.iteritems():
+            for mac, meter in target.iteritems():
                 meter_id = meter.get('meter_id')
                 bandwidth = meter.get('bandwidth')
                 # datapath = forwarding_config.member_list.get(mac).datapath
                 datapath = self.MyDATAPATH
                 parser = datapath.ofproto_parser
-                #set the rule for the flows of the app
+                # set the rule for the flows of the app
                 flow_limited = []
-                if mac == "all" :
-                    for key,flow in forwarding_config.flow_list.iteritems():
+                if mac == "all":
+                    for key, flow in forwarding_config.flow_list.iteritems():
                         if flow.app == app:
                             flow.rate = meter_id
                             flow_limited.append(flow)
                 else:
-                    for key,flow in forwarding_config.flow_list.iteritems():
+                    for key, flow in forwarding_config.flow_list.iteritems():
                         target_host = forwarding_config.member_list.get(mac)
                         if flow.dst_ip == target_host.ip and flow.app == app:
                             flow.rate = meter_id
@@ -136,7 +138,6 @@ class QosControl(app_manager.RyuApp):
                 ofp_helper.mod_meter(datapath, bandwidth/len(flow_limited), meter_id)
                 self._request_meter_config_stats(datapath)
 
-
     # meter
     def _request_meter_config_stats(self, datapath):
         ofproto = datapath.ofproto
@@ -146,7 +147,7 @@ class QosControl(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPMeterConfigStatsReply, MAIN_DISPATCHER)
     def _meter_config_stats_reply_handler(self, ev):
-        #Delete all meter in swtich initial
+        # Delete all meter in swtich initial
         if len(qos_config.meter) == 0:
             switch_list = get_switch(self.topology_api_app, None)
             for switch in switch_list:
@@ -156,17 +157,17 @@ class QosControl(app_manager.RyuApp):
                 for stat in body:
                     rate = str(stat.bands[0].rate)
                     ofp_helper.del_meter(datapath, int(rate), int(stat.meter_id))
-                qos_config.meter = {'-1':'drop' ,'0':'unlimit'}
-                #Go into this function again and add meter to meter_list
+                qos_config.meter = {'-1': 'drop', '0': 'unlimit'}
+                # Go into this function again and add meter to meter_list
                 self._request_meter_config_stats(datapath)
                 return
 
-        #Update meters from switch
-        qos_config.meter = {'-1':'drop' ,'0':'unlimit'}
+        # Update meters from switch
+        qos_config.meter = {'-1': 'drop', '0': 'unlimit'}
         body = ev.msg.body
         for stat in body:
             rate = str(stat.bands[0].rate)
-            qos_config.meter.update({stat.meter_id:rate})
+            qos_config.meter.update({stat.meter_id: rate})
 
     def add_meter(self, bandwidth, id):
         switch_list = get_switch(self.topology_api_app, None)
@@ -184,12 +185,12 @@ class QosControl(app_manager.RyuApp):
             ofp_helper.del_meter(datapath, bandwidth, id)
             self._request_meter_config_stats(datapath)
 
-    #Get free meter id for app limitation
+    # Get free meter id for app limitation
     def get_free_meterid(self):
         meter_list = qos_config.meter
         counter = 1
         while counter > 0:
-            if meter_list.get(counter) is None :
+            if meter_list.get(counter) is None:
                 return counter
             else:
                 counter += 1
@@ -244,11 +245,11 @@ class QosControlController(ControllerBase):
     @route('flow_data', urls.get_flow_info, methods=['GET'])
     def get_flow_data(self, req, **kwargs):
         dic = []
-        for key,value in forwarding_config.flow_list.iteritems():
+        for key, value in forwarding_config.flow_list.iteritems():
             flow = {"src_mac": value.src_mac, "dst_mac": value.dst_mac,
-                      "src_ip": value.src_ip, "dst_ip": value.dst_ip,
-                      "src_port": value.src_port, "dst_port": value.dst_port,
-                      "ip_proto": value.ip_proto, "rate": value.rate, "app": value.app}
+                    "src_ip": value.src_ip, "dst_ip": value.dst_ip,
+                    "src_port": value.src_port, "dst_port": value.dst_port,
+                    "ip_proto": value.ip_proto, "rate": value.rate, "app": value.app}
             dic.append({key: flow})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
@@ -256,7 +257,7 @@ class QosControlController(ControllerBase):
     @route('member_data', urls.get_member_info, methods=['GET'])
     def get_member_data(self, req, **kwargs):
         dic = []
-        for key,value in forwarding_config.member_list.iteritems():
+        for key, value in forwarding_config.member_list.iteritems():
             member = {"hostname": value.hostname, "ip": value.ip,
                       "mac": value.mac, "datapath": str(value.datapath.id),
                       "port": value.port, "meter_id": value.meter_id}
@@ -267,7 +268,7 @@ class QosControlController(ControllerBase):
     @route('app_data', urls.get_app_info, methods=['GET'])
     def get_app_data(self, req, **kwargs):
         dic = []
-        for key,value in qos_config.app_list.iteritems():
+        for key, value in qos_config.app_list.iteritems():
             dic.append({key: value})
         body = json.dumps(dic)
         return Response(content_type='application/json', body=body)
@@ -279,7 +280,7 @@ class QosControlController(ControllerBase):
         mac = str(kwargs['mac'])
         json_data = json.loads(req.body)
         bandwidth = str(json_data.get('bandwidth'))
-        qos_control.rate_limit_for_member(mac,bandwidth)
+        qos_control.rate_limit_for_member(mac, bandwidth)
         return Response(status=202)
 
     @route('set_ratelimit_for_app', urls.put_qos_rate_limit_app, methods=['PUT'])
@@ -290,16 +291,15 @@ class QosControlController(ControllerBase):
         json_data = json.loads(req.body)
         bandwidth = int(json_data.get('bandwidth'))
         mac = str(json_data.get('mac'))
-        qos_control.rate_limit_for_app(app,mac,bandwidth)
+        qos_control.rate_limit_for_app(app, mac, bandwidth)
         return Response(status=202)
-
 
     @route('get_rate_for_app', urls.get_app_rate, methods=['GET'])
     def get_rate_in_app(self, req, **kwargs):
         app = str(kwargs['app'])
         dic = {}
         total_rate = 0
-        for key,value in forwarding_config.flow_list.iteritems():
+        for key, value in forwarding_config.flow_list.iteritems():
             if value.app == app and value.rate != 0:
                 if dic.get(value.dst_ip) is None:
                     dic[value.dst_ip] = value.rate*8
