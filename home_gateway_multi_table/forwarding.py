@@ -22,7 +22,7 @@ from ryu.lib import mac
 
 from config import service_config, forwarding_config
 from helper import ofp_helper
-from models.member import Member
+# from models.member import Member
 
 
 class L2Switch(app_manager.RyuApp):
@@ -50,7 +50,7 @@ class L2Switch(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
-        if not service_config.service_status['forwarding']:
+        if service_config.service_status['nat']:
             return
 
         msg = ev.msg
@@ -71,21 +71,6 @@ class L2Switch(app_manager.RyuApp):
         if pkt_lldp:
             # ignore lldp packet
             return
-
-        if pkt_dhcp:
-            for options in pkt_dhcp.options.option_list:
-                if(options.tag == 12):
-                    if forwarding_config.member_list.get(pkt_dhcp.chaddr) is not None:
-                        member = forwarding_config.member_list.get(pkt_dhcp.chaddr)
-                    else:
-                        forwarding_config.member_list.setdefault(pkt_dhcp.chaddr,
-                                                                 Member(pkt_dhcp.chaddr))
-                        forwarding_config.member_list[pkt_dhcp.chaddr].datapath = datapath
-                        forwarding_config.member_list[pkt_dhcp.chaddr].port = in_port
-                    forwarding_config.member_list[pkt_dhcp.chaddr].hostname = options.value
-            if service_config.service_status['dhcp']:
-                # if dhcp enabled, forwarding should not handle
-                return
 
         if pkt_arp or pkt_eth.dst not in forwarding_config.member_list:
             self._handle_arp(msg, in_port, pkt_eth, pkt_arp)
@@ -108,9 +93,9 @@ class L2Switch(app_manager.RyuApp):
 
         # update member(host) in member_list
         member_list = forwarding_config.member_list
-        member_list.setdefault(eth_src, Member(eth_src))
-        member_list[eth_src].datapath = datapath
-        member_list[eth_src].port = in_port
+        # member_list.setdefault(eth_src, Member(eth_src))
+        # member_list[eth_src].datapath = datapath
+        # member_list[eth_src].port = in_port
 
         if eth_dst not in member_list:
             self._broadcast_pkt(msg, in_port)
@@ -186,12 +171,12 @@ class L2Switch(app_manager.RyuApp):
                                          eth_type=ether.ETH_TYPE_IP,
                                          ipv4_src=pkt_ipv4.dst,
                                          ipv4_dst=pkt_ipv4.src)
-        ofp_helper.add_flow_with_next(datapath, table_id=self.table_id,
-                                      priority=self.service_priority, match=match,
-                                      actions=actions, idle_timeout=10)
-        ofp_helper.add_flow_with_next(datapath, table_id=self.table_id,
-                                      priority=self.service_priority, match=match_back,
-                                      actions=actions_back, idle_timeout=10)
+        ofp_helper.add_flow(datapath, table_id=self.table_id,
+                            priority=self.service_priority, match=match,
+                            actions=actions, idle_timeout=10)
+        ofp_helper.add_flow(datapath, table_id=self.table_id,
+                            priority=self.service_priority, match=match_back,
+                            actions=actions_back, idle_timeout=10)
         ofp_helper.send_packet_out(msg, in_port, actions)
 
     def _broadcast_pkt(self, msg, in_port):

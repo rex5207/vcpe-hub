@@ -10,7 +10,7 @@ service_priority = {
     'forwarding': 5,
     # nat/dhcp
     'dhcp': 100,
-    'nat': 10,
+    'nat': 1000,
     # next in all table
     'goto_table': 0,
     # packet_in in last table
@@ -25,7 +25,7 @@ service_sequence = {
     'forwarding': 3,
     'nat_egress': 4,   # inside-to-outside
     'dhcp': 4,
-    'packet_in': 3,    # last table
+    'packet_in': 4,    # last table
 }
 
 # service enable or disable

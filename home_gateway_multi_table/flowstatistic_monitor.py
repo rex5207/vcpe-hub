@@ -1,16 +1,24 @@
 from ryu.base import app_manager
 from ryu.controller import ofp_event
-from ryu.controller.handler import CONFIG_DISPATCHER,MAIN_DISPATCHER
+from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.topology.api import get_switch
 from ryu.controller.event import EventBase
 from ryu.lib import hub
 from ryu.ofproto import ether
 from ryu.ofproto import inet
+from ryu.lib.packet import packet
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ether_types
+from ryu.lib.packet import arp
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import tcp
+from ryu.lib.packet import udp
+from ryu.lib.packet import dhcp
 from ryu.app.ofctl.api import get_datapath
-
-from config import forwarding_config,qos_config
+from config import forwarding_config, qos_config
 from models import flow
+from models.member import Member
 from qos import App_UpdateEvent
 
 import logging
@@ -104,3 +112,59 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
                         flow_value.exist = 1
+
+    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    def _packet_in_handler(self, ev):
+        # retrieve packet
+        msg = ev.msg
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        in_port = msg.match['in_port']
+        dpid = datapath.id
+        pkt = packet.Packet(msg.data)
+        pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
+        pkt_ipv4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_arp = pkt.get_protocol(arp.arp)
+        pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
+
+        if pkt_dhcp:
+            for options in pkt_dhcp.options.option_list:
+                if(options.tag == 12):
+                    if forwarding_config.member_list.get(pkt_dhcp.chaddr) is not None:
+                        member = forwarding_config.member_list.get(pkt_dhcp.chaddr)
+                    else:
+                        forwarding_config.member_list.setdefault(pkt_dhcp.chaddr,
+                                                                 Member(pkt_dhcp.chaddr))
+                        forwarding_config.member_list[pkt_dhcp.chaddr].datapath = datapath
+                        forwarding_config.member_list[pkt_dhcp.chaddr].port = in_port
+                    forwarding_config.member_list[pkt_dhcp.chaddr].hostname = options.value
+
+        if pkt_arp:
+            self._handle_arp(msg, in_port, pkt_eth, pkt_arp)
+        elif pkt_ipv4:
+            self._handle_ipv4(msg, in_port, pkt, pkt_eth, pkt_ipv4)
+
+    def _handle_arp(self, msg, in_port, pkt_eth, pkt_arp):
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        eth_src = pkt_eth.src
+
+        # update member(host) in member_list
+        member_list = forwarding_config.member_list
+        member_list.setdefault(eth_src, Member(eth_src))
+        member_list[eth_src].datapath = datapath
+        member_list[eth_src].port = in_port
+
+    def _handle_ipv4(self, msg, in_port, pkt, pkt_ethernet, pkt_ipv4):
+        datapath = msg.datapath
+        eth_src = pkt_ethernet.src
+
+        # update ip info for members in member_list
+        member_list = forwarding_config.member_list
+        member_list.setdefault(eth_src, Member(eth_src))
+        src_member = member_list[pkt_ethernet.src]
+        src_member.ip = pkt_ipv4.src
+        src_member.port = in_port
+        src_member.datapath = datapath
