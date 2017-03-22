@@ -21,7 +21,7 @@ from config import forwarding_config, qos_config, service_config
 qos_instance_name = 'qos_api_app'
 
 
-class APP_UpdateEvent(EventBase):
+class App_UpdateEvent(EventBase):
     def __init__(self, msg):
         self.msg = msg
 
@@ -29,7 +29,7 @@ class APP_UpdateEvent(EventBase):
 class QosControl(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     _CONTEXTS = {'wsgi': WSGIApplication}
-    _EVENTS = [APP_UpdateEvent]
+    _EVENTS = [App_UpdateEvent]
     MyDATAPATH = None
 
     def __init__(self, *args, **kwargs):
@@ -92,10 +92,10 @@ class QosControl(app_manager.RyuApp):
             else:
                 rate_for_member = {mac: {"bandwidth": bandwidth}}
                 qos_config.app_list.get(app).get(mac)['bandwidth'] = bandwidth
-        ev = APP_UpdateEvent('Update rate for app')
+        ev = App_UpdateEvent('Update rate for app')
         self.send_event_to_observers(ev)
 
-    @set_ev_cls(APP_UpdateEvent)
+    @set_ev_cls(App_UpdateEvent)
     def app_event_handler(self, ev):
         for app, target in qos_config.app_list.iteritems():
             for mac, meter in target.iteritems():

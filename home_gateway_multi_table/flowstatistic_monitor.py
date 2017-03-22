@@ -21,7 +21,7 @@ from config import forwarding_config, qos_config
 from models import flow
 from models.member import Member
 
-from qos import APP_UpdateEvent
+from qos import App_UpdateEvent
 
 import logging
 
