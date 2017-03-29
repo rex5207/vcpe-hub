@@ -80,18 +80,18 @@ class SNAT(app_manager.RyuApp):
         controller will release tcp/udp port which is not in use,
         putting it back to ports-pool.
         """
-        print '[*] Flow-Removed EVENT'
+        #print '[*] Flow-Removed EVENT'
         msg = ev.msg
 
         tcp_port = msg.match.get('tcp_dst')
         udp_port = msg.match.get('udp_dst')
 
         if tcp_port:
-            print '[*] Available TCP port %d' % tcp_port
+            #print '[*] Available TCP port %d' % tcp_port
             self.ports_pool.append(tcp_port)
             self.ports_pool.sort()
         elif udp_port:
-            print '[*] Available UDP port %d' % udp_port
+            #print '[*] Available UDP port %d' % udp_port
             self.ports_pool.append(udp_port)
             self.ports_pool.sort()
 
