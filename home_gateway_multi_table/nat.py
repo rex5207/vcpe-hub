@@ -431,7 +431,7 @@ class SNATRest(ControllerBase):
         save_dict['wan_port'] = json_body.get('wanPort')
         save_dict['public_ip'] = IPAddress(json_body.get('publicIP'))
 
-        public_gateway = IPAddress(json_body.get('publicGateway'))
+        public_gateway = json_body.get('publicGateway')
         save_dict['public_gateway'] = IPAddress(public_gateway)
         save_dict['public_ip_subnetwork'] = IPNetwork(public_gateway + '/24')
 
