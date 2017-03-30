@@ -128,6 +128,7 @@ class ServiceControl(app_manager.RyuApp):
         for switch in switch_list:
             datapath = switch.dp
             parser = datapath.ofproto_parser
+            ofproto = datapath.ofproto
             match_dhcp_request = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
                                                  ip_proto=inet.IPPROTO_UDP,
                                                  udp_src=68, udp_dst=67)
