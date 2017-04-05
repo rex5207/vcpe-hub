@@ -67,7 +67,8 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     key_tuples += str(msg.match.get('tcp_src')) + str(msg.match.get('tcp_dst'))
                 elif msg.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(msg.match.get('udp_src')) + str(msg.match.get('udp_dst'))
-                del forwarding_config.flow_list[key_tuples]
+                if forwarding_config.flow_list.get(key_tuples):
+                    del forwarding_config.flow_list[key_tuples]
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
