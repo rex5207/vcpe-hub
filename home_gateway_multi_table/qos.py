@@ -71,7 +71,7 @@ class QosControl(app_manager.RyuApp):
                                        table_id=self.table_id,
                                        priority=self.member_limit_priority,
                                        match=match,
-                                       meter_id=meter_id,
+                                       meter_id=int(meter_id),
                                        idle_timeout=10)
 
     def rate_limit_for_app(self, app, mac, bandwidth):
