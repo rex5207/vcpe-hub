@@ -22,11 +22,13 @@ from models.member import Member
 from qos import App_UpdateEvent
 
 import logging
+import time
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
 
     _EVENTS = [App_UpdateEvent]
+    start_time=time.time()
 
     def __init__(self, *args, **kwargs):
         """Initial Setting method."""
@@ -47,7 +49,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
             datapath.send_msg(req)
             ev = App_UpdateEvent('Update rate for app')
             self.send_event_to_observers(ev)
-            hub.sleep(1)
+            hub.sleep(2)
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, ev):
@@ -125,7 +127,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_1 = flow_value.byte_count_2
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
-                        flow_value.exist = 1
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):

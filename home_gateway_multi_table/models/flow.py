@@ -25,4 +25,4 @@ class Flow:
     def rate_calculation(self):
         """calculate flow rate."""
         if self.byte_count_2 > self.byte_count_1:
-            self.rate = (float(self.byte_count_2) - float(self.byte_count_1))/1
+            self.rate = (float(self.byte_count_2) - float(self.byte_count_1))/2
