@@ -22,13 +22,11 @@ from models.member import Member
 from qos import App_UpdateEvent
 
 import logging
-import time
 
 
 class flowstatistic_monitor(app_manager.RyuApp):
 
     _EVENTS = [App_UpdateEvent]
-    start_time=time.time()
 
     def __init__(self, *args, **kwargs):
         """Initial Setting method."""
