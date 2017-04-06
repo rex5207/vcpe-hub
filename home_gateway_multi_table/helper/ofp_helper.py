@@ -3,8 +3,8 @@ def add_flow(datapath, table_id, priority, match, actions,
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     # mirror and pervent port 24 to port 24
-    if match.get('in_port') is not 24:
-        actions.append(parser.OFPActionOutput(24))
+    # if match.get('in_port') is not 24 :
+    #     actions.append(parser.OFPActionOutput(24))
     inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                          actions)]
     if buffer_id:
@@ -41,14 +41,16 @@ def add_write_flow(datapath, table_id, priority, match, actions,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     else:
         mod = parser.OFPFlowMod(datapath=datapath,
                                 idle_timeout=idle_timeout,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
@@ -99,12 +101,12 @@ def add_write_flow_with_next(datapath, table_id, priority, match, actions,
     ofproto = datapath.ofproto
     parser = datapath.ofproto_parser
     next_table = table_id + 1
+    # mirror and pervent port 24 to port 24
+    # if match.get('in_port') is not 24:
+    #     actions.append(parser.OFPActionOutput(24))
 
     inst = [parser.OFPInstructionActions(ofproto.OFPIT_WRITE_ACTIONS, actions),
             parser.OFPInstructionGotoTable(next_table)]
-    # mirror and pervent port 24 to port 24
-    if match.get('in_port') is not 24:
-        actions.append(parser.OFPActionOutput(24))
     if buffer_id:
         mod = parser.OFPFlowMod(datapath=datapath,
                                 idle_timeout=idle_timeout,
@@ -112,14 +114,16 @@ def add_write_flow_with_next(datapath, table_id, priority, match, actions,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     else:
         mod = parser.OFPFlowMod(datapath=datapath,
                                 idle_timeout=idle_timeout,
                                 priority=priority,
                                 match=match,
                                 table_id=table_id,
-                                instructions=inst)
+                                instructions=inst,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM)
     datapath.send_msg(mod)
 
 
