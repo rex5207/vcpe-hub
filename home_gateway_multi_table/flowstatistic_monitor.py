@@ -47,7 +47,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
             datapath.send_msg(req)
             ev = App_UpdateEvent('Update rate for app')
             self.send_event_to_observers(ev)
-            hub.sleep(1)
+            hub.sleep(2)
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, ev):
@@ -67,7 +67,8 @@ class flowstatistic_monitor(app_manager.RyuApp):
                     key_tuples += str(msg.match.get('tcp_src')) + str(msg.match.get('tcp_dst'))
                 elif msg.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(msg.match.get('udp_src')) + str(msg.match.get('udp_dst'))
-                del forwarding_config.flow_list[key_tuples]
+                if forwarding_config.flow_list.get(key_tuples):
+                    del forwarding_config.flow_list[key_tuples]
 
     @set_ev_cls(ofp_event.EventOFPFlowStatsReply, MAIN_DISPATCHER)
     def _flow_stats_reply_handler(self, ev):
@@ -124,7 +125,6 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_1 = flow_value.byte_count_2
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
-                        flow_value.exist = 1
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):

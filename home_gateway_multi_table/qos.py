@@ -58,6 +58,9 @@ class QosControl(app_manager.RyuApp):
         for myid, mybandwidth in qos_config.meter.iteritems():
             if mybandwidth == bandwidth:
                 meter_id = myid
+        if meter_id == 0 and bandwidth != 'unlimit':
+            meter_id = self.get_free_meterid()
+            self.add_meter(int(bandwidth), meter_id)
         forwarding_config.member_list.get(mac).meter_id = meter_id
         datapath = forwarding_config.member_list.get(mac).datapath
         out_port = forwarding_config.member_list.get(mac).port
@@ -68,7 +71,7 @@ class QosControl(app_manager.RyuApp):
                                        table_id=self.table_id,
                                        priority=self.member_limit_priority,
                                        match=match,
-                                       meter_id=meter_id,
+                                       meter_id=int(meter_id),
                                        idle_timeout=10)
 
     def rate_limit_for_app(self, app, mac, bandwidth):
