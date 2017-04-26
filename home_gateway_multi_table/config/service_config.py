@@ -22,6 +22,7 @@ service_sequence = {
     'nat_ingress': 0,  # outside-to-inside
     'firewall': 1,
     'qos': 2,
+    'mirror': 3,
     'forwarding': 4,
     'nat_egress': 5,   # inside-to-outside
     'dhcp': 5,

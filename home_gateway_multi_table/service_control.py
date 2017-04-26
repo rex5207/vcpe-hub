@@ -64,7 +64,7 @@ class ServiceControl(app_manager.RyuApp):
         #                               actions=experiment_action, idle_timeout=0)
         ofp_helper.add_flow_goto_next(datapath, 2, self.goto_table_priority, match)
         # ofp_helper.add_flow_goto_next(datapath, 3, self.goto_table_priority, match)
-        ofp_helper.add_flow_with_next(datapath, table_id=3,
+        ofp_helper.add_flow_with_next(datapath, table_id=service_config.service_sequence['mirror'],
                                       priority=self.goto_table_priority, match=match,
                                       actions=experiment_action, idle_timeout=0)
         ofp_helper.add_flow_goto_next(datapath, 4, self.goto_table_priority, match)

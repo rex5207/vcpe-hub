@@ -74,7 +74,7 @@ class flowstatistic_monitor(app_manager.RyuApp):
     def _flow_stats_reply_handler(self, ev):
         body = ev.msg.body
         for stat in body:
-            if stat.table_id != 3:
+            if stat.table_id != service_config.service_sequence['forwarding']:
                 continue
             if stat.match.get('eth_type') == ether.ETH_TYPE_IP:
                 key_tuples = str(ev.msg.datapath.id)\
