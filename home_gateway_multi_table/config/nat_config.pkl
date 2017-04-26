@@ -11,7 +11,7 @@ c__builtin__
 object
 p5
 NtRp6
-(I3232236032
+(I2356299520
 I24
 I4
 tbsS'mac_on_dhcp'
@@ -57,7 +57,7 @@ g3
 (g12
 g5
 NtRp20
-(I3232236176
+(I2356299698
 I4
 tbsS'public_gateway'
 p21
@@ -65,7 +65,7 @@ g3
 (g12
 g5
 NtRp22
-(I3232236033
+(I2356299774
 I4
 tbsS'private_subnetwork'
 p23
