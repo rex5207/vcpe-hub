@@ -22,10 +22,11 @@ service_sequence = {
     'nat_ingress': 0,  # outside-to-inside
     'firewall': 1,
     'qos': 2,
-    'forwarding': 3,
-    'nat_egress': 4,   # inside-to-outside
-    'dhcp': 4,
-    'packet_in': 4,    # last table
+    'mirror': 3,
+    'forwarding': 4,
+    'nat_egress': 5,   # inside-to-outside
+    'dhcp': 5,
+    'packet_in': 5,    # last table
 }
 
 # service enable or disable

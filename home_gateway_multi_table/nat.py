@@ -398,9 +398,9 @@ class SNATRest(ControllerBase):
         save_dict = {}
 
         save_dict['wan_port'] = 1
-        save_dict['public_ip'] = IPAddress('192.168.2.144')
-        save_dict['public_gateway'] = IPAddress('192.168.2.1')
-        save_dict['public_ip_subnetwork'] = IPNetwork('192.168.2.0/24')
+        save_dict['public_ip'] = IPAddress('140.114.71.178')
+        save_dict['public_gateway'] = IPAddress('140.114.71.254')
+        save_dict['public_ip_subnetwork'] = IPNetwork('140.114.71.0/24')
 
         network = '192.168.8.0/24'
         save_dict['private_subnetwork'] = IPNetwork(network)

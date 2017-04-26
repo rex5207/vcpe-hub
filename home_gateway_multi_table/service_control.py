@@ -52,7 +52,7 @@ class ServiceControl(app_manager.RyuApp):
         switch_list = get_switch(self.topology_api_app, None)
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
-        experiment_action = [parser.OFPActionOutput(3)]
+        experiment_action = [parser.OFPActionOutput(24)]
         # outside - inside (Table 0)
         # ofp_helper.add_flow_with_next(datapath, table_id=0,
         #                               priority=self.goto_table_priority, match=match,
@@ -63,9 +63,11 @@ class ServiceControl(app_manager.RyuApp):
         #                               priority=self.goto_table_priority, match=match,
         #                               actions=experiment_action, idle_timeout=0)
         ofp_helper.add_flow_goto_next(datapath, 2, self.goto_table_priority, match)
-        ofp_helper.add_flow_goto_next(datapath, 3, self.goto_table_priority, match)
-
-        # ofp_helper.add_flow_goto_next(datapath, 4, self.goto_table_priority, match)
+        # ofp_helper.add_flow_goto_next(datapath, 3, self.goto_table_priority, match)
+        ofp_helper.add_flow_with_next(datapath, table_id=service_config.service_sequence['mirror'],
+                                      priority=self.goto_table_priority, match=match,
+                                      actions=experiment_action, idle_timeout=0)
+        ofp_helper.add_flow_goto_next(datapath, 4, self.goto_table_priority, match)
 
     def init_service(self, datapath):
         service_status = service_config.service_status
