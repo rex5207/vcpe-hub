@@ -52,7 +52,7 @@ class ServiceControl(app_manager.RyuApp):
         switch_list = get_switch(self.topology_api_app, None)
         parser = datapath.ofproto_parser
         match = parser.OFPMatch()
-        experiment_action = [parser.OFPActionOutput(24)]
+        experiment_action = [parser.OFPActionOutput(4)]
         # outside - inside (Table 0)
         # ofp_helper.add_flow_with_next(datapath, table_id=0,
         #                               priority=self.goto_table_priority, match=match,
