@@ -16,7 +16,7 @@ from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
 from ryu.lib.packet import dhcp
 from ryu.app.ofctl.api import get_datapath
-from config import forwarding_config, qos_config
+from config import forwarding_config, qos_config, service_config
 from models import flow
 from models.member import Member
 from qos import App_UpdateEvent
