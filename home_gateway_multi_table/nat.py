@@ -59,12 +59,14 @@ class SNAT(app_manager.RyuApp):
         self.port_counter = -1
         self.ports_pool = range(2000, 65536)
 
+        self.mac_to_port = {}
+        self.l2table_id = service_config.service_sequence['forwarding']
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-
         # # Table Miss, forward packet to next table
         # match = parser.OFPMatch()
         # ofp_helper.add_flow_goto_next(datapath, table_id=self.egress_table_id,
@@ -137,6 +139,9 @@ class SNAT(app_manager.RyuApp):
                                         src_ip=self.public_ip,
                                         target_mac=pkt_arp.src_mac,
                                         target_ip=pkt_arp.src_ip)
+        else:
+            data = nat_helper.broadcast_arp_request(src_mac=pkt_arp.src_mac, src_ip=pkt_arp.src_ip, target_ip=pkt_arp.dst_ip)
+            
 
         return data
 
@@ -302,7 +307,6 @@ class SNAT(app_manager.RyuApp):
     def _packet_in_handler(self, ev):
         if not service_config.service_status['nat']:
             return
-
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -315,6 +319,7 @@ class SNAT(app_manager.RyuApp):
         pkt_ip = pkt.get_protocol(ipv4.ipv4)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
         pkt_udp = pkt.get_protocol(udp.udp)
+        pkt_eth = pkt.get_protocols(ethernet.ethernet)[0]
 
         # if IP_TO_MAC_TABLE:
         #     print IP_TO_MAC_TABLE
@@ -341,6 +346,19 @@ class SNAT(app_manager.RyuApp):
                         pkt_ip.dst != str(self.private_gateway)):
                     # These packets are just in private network
                     # l2switch will handle it
+                    match = datapath.ofproto_parser.OFPMatch(ipv4_src=pkt_ip.src, ipv4_dst=pkt_ip.dst, eth_type=ether.ETH_TYPE_IP)
+                    out_port = self.mac_to_port[datapath.id][pkt_eth.dst]
+                    actions = [parser.OFPActionOutput(out_port)]
+                    ofp_helper.add_flow(datapath, table_id=self.l2table_id,
+                            priority=1, match=match,
+                            actions=actions, idle_timeout=10)
+
+                    data = None
+                    if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+                        data = msg.data
+                    out = datapath.ofproto_parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port, actions=actions, data=data)
+                    datapath.send_msg(out)
+                    
                     return
 
                 ip_dst = pkt_ip.dst
@@ -382,9 +400,29 @@ class SNAT(app_manager.RyuApp):
                                                 pkt_udp=pkt_udp)
             elif pkt_arp:
                 if pkt_arp.opcode == arp.ARP_REQUEST:
+                    if (self._in_private_subnetwork(pkt_arp.dst_ip) and
+                            pkt_arp.dst_ip != str(self.private_gateway)):
+                        arp_req_pkt = nat_helper.broadcast_arp_request(src_mac=pkt_arp.src_mac, src_ip=pkt_arp.src_ip, target_ip=pkt_arp.dst_ip)
+                        flood_port = datapath.ofproto.OFPP_FLOOD
+                        self._send_packet_to_port(datapath, flood_port, arp_req_pkt)
+                        self.mac_to_port.setdefault(datapath.id, {}) 
+                        self.mac_to_port[datapath.id][pkt_arp.src_mac] = in_port
+                        return
                     arp_reply_pkt = self._arp_request_handler(pkt_arp)
                     self._send_packet_to_port(datapath, in_port, arp_reply_pkt)
                 elif pkt_arp.opcode == arp.ARP_REPLY:
+                    if (self._in_private_subnetwork(pkt_arp.dst_ip) and
+                            pkt_arp.dst_ip != str(self.private_gateway)):
+                        #arp_reply_pkt = self._arp_reply_handler(pkt_arp)
+                        self.mac_to_port[datapath.id][pkt_arp.src_mac] = in_port
+                        out_port = self.mac_to_port[datapath.id][pkt_arp.dst_mac]
+                        #self._send_packet_to_port(datapath, out_port, arp_reply_pkt)
+                        data = None
+                        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+                            data = msg.data
+                        actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                        out = datapath.ofproto_parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port, actions=actions, data=data)
+                        datapath.send_msg(out)
                     pass
 
 
