@@ -208,6 +208,7 @@ class SNAT(app_manager.RyuApp):
                                     tcp_src=tcp_src,
                                     tcp_dst=tcp_dst)
             actions = [parser.OFPActionSetField(eth_dst=IP_TO_MAC_TABLE[target_ip]),
+                       parser.OFPActionSetField(eth_src='00:0e:c6:87:a6:fb'),
                        parser.OFPActionSetField(ipv4_src=self.public_ip),
                        parser.OFPActionSetField(tcp_src=nat_port)]
             forward_actions = [parser.OFPActionOutput(out_port)]
@@ -245,6 +246,7 @@ class SNAT(app_manager.RyuApp):
                                     udp_src=udp_src,
                                     udp_dst=udp_dst)
             actions = [parser.OFPActionSetField(eth_dst=IP_TO_MAC_TABLE[target_ip]),
+                       parser.OFPActionSetField(eth_src='00:0e:c6:87:a6:fb'),
                        parser.OFPActionSetField(ipv4_src=self.public_ip),
                        parser.OFPActionSetField(udp_src=nat_port)]
             forward_actions = [parser.OFPActionOutput(out_port)]
@@ -290,6 +292,7 @@ class SNAT(app_manager.RyuApp):
                             priority=self.service_priority, match=match,
                             actions=actions, idle_timeout=self.IDLE_TIME)
 
+        actions.append(parser.OFPActionOutput(out_port))
         # send first packet back to switch
         d = None
         if buffer_id == ofproto.OFP_NO_BUFFER:
@@ -398,9 +401,9 @@ class SNATRest(ControllerBase):
         save_dict = {}
 
         save_dict['wan_port'] = 1
-        save_dict['public_ip'] = IPAddress('140.114.71.178')
-        save_dict['public_gateway'] = IPAddress('140.114.71.254')
-        save_dict['public_ip_subnetwork'] = IPNetwork('140.114.71.0/24')
+        save_dict['public_ip'] = IPAddress('192.168.2.66')
+        save_dict['public_gateway'] = IPAddress('192.168.2.1')
+        save_dict['public_ip_subnetwork'] = IPNetwork('192.168.2.0/24')
 
         network = '192.168.8.0/24'
         save_dict['private_subnetwork'] = IPNetwork(network)
