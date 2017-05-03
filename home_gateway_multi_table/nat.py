@@ -214,7 +214,8 @@ class SNAT(app_manager.RyuApp):
             forward_actions = [parser.OFPActionOutput(out_port)]
 
             # ingress
-            match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+            match_back = parser.OFPMatch(in_port=out_port,
+                                         eth_type=ether.ETH_TYPE_IP,
                                          ip_proto=inet.IPPROTO_TCP,
                                          ipv4_src=ipv4_dst,
                                          ipv4_dst=self.public_ip,
@@ -252,7 +253,8 @@ class SNAT(app_manager.RyuApp):
             forward_actions = [parser.OFPActionOutput(out_port)]
 
             # ingress, outside-to-inside
-            match_back = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP,
+            match_back = parser.OFPMatch(in_port=out_port,
+                                         eth_type=ether.ETH_TYPE_IP,
                                          ip_proto=inet.IPPROTO_UDP,
                                          ipv4_src=ipv4_dst,
                                          ipv4_dst=self.public_ip,
@@ -401,7 +403,7 @@ class SNATRest(ControllerBase):
         save_dict = {}
 
         save_dict['wan_port'] = 1
-        save_dict['public_ip'] = IPAddress('192.168.2.66')
+        save_dict['public_ip'] = IPAddress('192.168.2.53')
         save_dict['public_gateway'] = IPAddress('192.168.2.1')
         save_dict['public_ip_subnetwork'] = IPNetwork('192.168.2.0/24')
 
