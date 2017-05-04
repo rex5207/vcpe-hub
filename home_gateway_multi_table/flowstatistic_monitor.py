@@ -104,6 +104,8 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_1 = flow_value.byte_count_2
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
+                        if flow_value.limited > 0:
+                            flow_value.limited -= 1
 
                 elif stat.match.get('ip_proto') == inet.IPPROTO_UDP:
                     key_tuples += str(stat.match.get('udp_src'))\
@@ -125,6 +127,8 @@ class flowstatistic_monitor(app_manager.RyuApp):
                         flow_value.byte_count_1 = flow_value.byte_count_2
                         flow_value.byte_count_2 = stat.byte_count
                         flow_value.rate_calculation()
+                        if flow_value.limited > 0:
+                            flow_value.limited -= 1
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
