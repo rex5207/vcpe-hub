@@ -26,3 +26,9 @@ class Flow:
         """calculate flow rate."""
         if self.byte_count_2 > self.byte_count_1:
             self.rate = (float(self.byte_count_2) - float(self.byte_count_1))/2
+            self.count = 0
+        else:
+            self.counter += 1
+            if self.counter >= 3:
+                self.rate = 0
+                self.counter = 0
