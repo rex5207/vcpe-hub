@@ -71,7 +71,8 @@ class QosControl(app_manager.RyuApp):
 
     def rate_limit_for_app(self, app, mac, bandwidth):
         new_meter_id = 0
-        flag = 0
+        datapath = self.MyDATAPATH
+        parser = datapath.ofproto_parser
         if(bandwidth != 'unlimit'):
             # Give this app a new meter
             if qos_config.app_list.get(app) is None:
@@ -85,14 +86,13 @@ class QosControl(app_manager.RyuApp):
                     self.add_meter(int(bandwidth), new_meter_id)
                     qos_config.app_list.get(app).update({mac: {"meter_id": new_meter_id,"bandwidth" : bandwidth}})
                 else:
-                    rate_for_member = {mac: {"bandwidth": bandwidth} }
+                    # rate_for_member = {mac: {"bandwidth": bandwidth} }
+                    meter_id = qos_config.app_list.get(app).get(mac)['meter_id']
                     qos_config.app_list.get(app).get(mac)['bandwidth'] = bandwidth
-                    flag = 1
-        if(flag != 0):
-            return
+                    ofp_helper.mod_meter(datapath, int(bandwidth), int(meter_id))
+                    self._request_meter_config_stats(datapath)
+                    return
         # Add rule for all flow which app is this app
-        datapath = self.MyDATAPATH
-        parser = datapath.ofproto_parser
         if mac is not 'all':
             target_host = forwarding_config.member_list.get(mac)
         for key,flow in forwarding_config.flow_list.iteritems():
@@ -121,7 +121,7 @@ class QosControl(app_manager.RyuApp):
                                                match=match,
                                                meter_id=int(new_meter_id),
                                                idle_timeout=100)
-        self.bandwidth_update_handler()
+        #self.bandwidth_update_handler()
 
 
     # When identify what the app is, adding the meter to this flow
@@ -218,7 +218,7 @@ class QosControl(app_manager.RyuApp):
                     flow_info.limited = 4
                     #Let this flow adding the rate limitation meter
                     self.flow_meter_add_handler(flow_info)
-        self.bandwidth_update_handler()
+        #self.bandwidth_update_handler()
 
     # meter
     def _request_meter_config_stats(self, datapath):
