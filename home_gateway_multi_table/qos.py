@@ -71,6 +71,7 @@ class QosControl(app_manager.RyuApp):
 
     def rate_limit_for_app(self, app, mac, bandwidth):
         new_meter_id = 0
+        flag = 0
         if(bandwidth != 'unlimit'):
             # Give this app a new meter
             if qos_config.app_list.get(app) is None:
@@ -86,7 +87,9 @@ class QosControl(app_manager.RyuApp):
                 else:
                     rate_for_member = {mac: {"bandwidth": bandwidth} }
                     qos_config.app_list.get(app).get(mac)['bandwidth'] = bandwidth
-
+                    flag = 1
+        if(flag != 0):
+            return
         # Add rule for all flow which app is this app
         datapath = self.MyDATAPATH
         parser = datapath.ofproto_parser
