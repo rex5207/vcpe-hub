@@ -24,6 +24,8 @@ get_qos_meter = '/qos/meter'
 put_qos_meter_add = '/qos/meter/add'
 put_qos_meter_delete = '/qos/meter/delete'
 put_qos_meter_modify = '/qos/meter/modify'
+put_qos_meter_type = '/qos/meter/type'
+get_qos_meter_type = '/qos/meter/type'
 # topology
 get_qos_topology = '/qos/topology'
 # application(W.I.P.)
