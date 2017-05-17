@@ -71,7 +71,8 @@ class QosControl(app_manager.RyuApp):
 
     def rate_limit_for_app(self, app, mac, bandwidth):
         new_meter_id = 0
-        flag = 0
+        datapath = self.MyDATAPATH
+        parser = datapath.ofproto_parser
         if(bandwidth != 'unlimit'):
             # Give this app a new meter
             if qos_config.app_list.get(app) is None:
@@ -85,14 +86,14 @@ class QosControl(app_manager.RyuApp):
                     self.add_meter(int(bandwidth), new_meter_id)
                     qos_config.app_list.get(app).update({mac: {"meter_id": new_meter_id,"bandwidth" : bandwidth}})
                 else:
-                    rate_for_member = {mac: {"bandwidth": bandwidth} }
+                    # rate_for_member = {mac: {"bandwidth": bandwidth} }
+                    meter_id = qos_config.app_list.get(app).get(mac)['meter_id']
                     qos_config.app_list.get(app).get(mac)['bandwidth'] = bandwidth
-                    flag = 1
-        if(flag != 0):
-            return
+                    if qos_config.meter_type == 1:
+                        ofp_helper.mod_meter(datapath, int(bandwidth), int(meter_id))
+                        self._request_meter_config_stats(datapath)
+                        return
         # Add rule for all flow which app is this app
-        datapath = self.MyDATAPATH
-        parser = datapath.ofproto_parser
         if mac is not 'all':
             target_host = forwarding_config.member_list.get(mac)
         for key,flow in forwarding_config.flow_list.iteritems():
@@ -161,6 +162,8 @@ class QosControl(app_manager.RyuApp):
                                                idle_timeout=10)
 
     def bandwidth_update_handler(self):
+        if qos_config.meter_type == 1:
+            return
         for app,target in qos_config.app_list.iteritems():
             for mac,meter in target.iteritems():
                 meter_id = meter.get('meter_id')
@@ -404,4 +407,27 @@ class QosControlController(ControllerBase):
                     dic[value.dst_ip] += value.rate*8
                 dic['all'] += value.rate*8
         body = json.dumps(applist)
+        return Response(content_type='application/json', body=body)
+
+    @route('set_meter_type', urls.put_qos_meter_type, methods=['PUT'])
+    def set_meter_type(self, req, **kwargs):
+        qos_control = self.qos_control_spp
+
+        json_data = json.loads(req.body)
+        meter_type = str(json_data.get('meter_type'))
+        qos_config.meter_type = int(meter_type)
+
+        datapath = qos_control.MyDATAPATH
+        if int(meter_type) == 1:
+            for app, target in qos_config.app_list.iteritems():
+                for mac, meter in target.iteritems():
+                    meter_id = meter.get('meter_id')
+                    bandwidth = meter.get('bandwidth')
+                    ofp_helper.mod_meter(datapath, int(bandwidth), int(meter_id))
+            qos_control._request_meter_config_stats(datapath)
+        return Response(status=202)
+
+    @route('get_meter_type', urls.get_qos_meter_type, methods=['GET'])
+    def get_meter_type(self, req, **kwargs):
+        body = json.dumps({'meter_type': qos_config.meter_type})
         return Response(content_type='application/json', body=body)

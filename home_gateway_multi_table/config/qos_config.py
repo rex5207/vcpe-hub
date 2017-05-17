@@ -25,3 +25,7 @@ app_list = {
 app_list = {}
 # db
 get_flowstatistic_info = 'http://192.168.2.47:12001/api/v1/flows/'
+
+# 0: flow base
+# 1: queue base
+meter_type = 0
